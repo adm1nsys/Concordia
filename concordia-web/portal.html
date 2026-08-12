@@ -1,0 +1,330 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Concordia</title>
+<style>
+body{font:16px/1.55 system-ui,-apple-system,sans-serif;margin:0 auto;padding:24px;
+     max-width:30rem;background:#14161a;color:#e8e8ea}
+h1{font-size:1.15rem;margin:0 0 .2em}
+p.sub{color:#8b9099;margin:0 0 1.2em;font-size:.9rem}
+label{display:block;font-size:.85rem;color:#8b9099;margin:14px 0 5px}
+input{width:100%;box-sizing:border-box;padding:.6em .7em;border:1px solid #2b2f38;
+      border-radius:7px;background:#1b1e24;color:#e8e8ea;font:inherit}
+input:focus{outline:2px solid #3b6fd4;outline-offset:-1px}
+button{font:inherit;padding:.6em 1.1em;border:0;border-radius:7px;background:#3b6fd4;
+       color:#fff;cursor:pointer;margin-top:14px}
+button.ghost{background:#232730;color:#c7cad1}
+button:disabled{background:#3a3f48;cursor:default}
+#nets,#saved{margin:8px 0 0;padding:0;list-style:none;border:1px solid #2b2f38;border-radius:8px;
+      overflow:hidden}
+#nets li,#saved li{padding:.6em .8em;cursor:pointer;border-top:1px solid #2b2f38;font-size:.92rem;
+         display:flex;justify-content:space-between;gap:10px;align-items:center}
+#nets li:first-child,#saved li:first-child{border-top:0}
+#nets li:hover{background:#232730}
+#nets li span.db{color:#8b9099;font-size:.85em;white-space:nowrap}
+#nets li.other,#saved li.other{color:#8b9099;cursor:default}
+#saved li{cursor:default}
+button.sm{padding:.35em .7em;margin-top:0;font-size:.85em}
+#msg{margin-top:16px;white-space:pre-wrap;font-size:.9rem;color:#8b9099}
+#msg.err{color:#e0776f}
+#msg.ok{color:#6fbf7a}
+.hide{display:none}
+
+/* --------------------------------------------------------------- dialog
+ * One network at a time: tapping a name asks for that network's password
+ * on the spot, rather than filling a form somewhere else on the page and
+ * hoping the connection between the two is obvious. */
+#dlgBack{position:fixed;inset:0;background:rgba(6,7,10,.6);display:none;
+         align-items:center;justify-content:center;padding:20px;z-index:10}
+#dlgBack.open{display:flex}
+#dlg{background:#1b1e24;border:1px solid #2b2f38;border-radius:12px;padding:20px;
+     width:100%;max-width:24rem}
+#dlgTitle{font-weight:640;font-size:1.02rem;word-break:break-word}
+#dlgBtns{display:flex;gap:10px}
+#dlgBtns button{flex:1;margin-top:16px}
+</style>
+
+<h1 id="h1">Concordia</h1>
+<p class="sub" id="sub">This hub could not join a saved Wi-Fi network, so it is
+offering its own for setup. Pick a network below and enter its password.</p>
+
+<div id="login" class="hide">
+  <label>Name</label><input id="lName" autocomplete="username">
+  <label>Password</label><input id="lPass" type="password" autocomplete="current-password"
+    onkeydown="if(event.key==='Enter')doLogin()">
+  <button onclick="doLogin()">Sign in</button>
+  <div id="lErr" class="hide" style="color:#e0776f;margin-top:10px"></div>
+</div>
+
+<div id="wifi" class="hide">
+  <p class="sub" style="margin:0 0 8px">Saved networks</p>
+  <ul id="saved"></ul>
+
+  <button class="ghost" id="scanBtn" onclick="scan()" style="margin-top:18px">Scan for networks</button>
+  <ul id="nets"></ul>
+  <p class="sub" style="margin-top:18px">Saved networks stay on the hub; this
+  adds one more and switches to it. Nothing here touches devices already
+  bridged.</p>
+</div>
+
+<div id="msg"></div>
+
+<div id="dlgBack" onclick="if(event.target===this)dlgClose()">
+  <div id="dlg">
+    <div id="dlgTitle">Network</div>
+    <label id="dlgSsidLbl" class="hide">Network name</label>
+    <input id="dlgSsid" class="hide">
+    <label>Password</label>
+    <input id="dlgPass" type="password" onkeydown="if(event.key==='Enter')dlgJoin()">
+    <div id="dlgBtns">
+      <button onclick="dlgJoin()">Join</button>
+      <button class="ghost" onclick="dlgClose()">Cancel</button>
+    </div>
+    <div id="dlgErr" class="hide" style="color:#e0776f;margin-top:10px"></div>
+  </div>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+
+function msg(text,cls){
+  const m=$("msg");
+  m.textContent=text;
+  m.className=cls||"";
+}
+
+async function api(path,body){
+  const o=body!==undefined
+    ?{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body}
+    :{};
+  try{return await(await fetch(path,o)).json();}
+  catch(e){return {};}
+}
+async function cmd(text){
+  const r=await api("/api/cmd","cmd="+encodeURIComponent(text));
+  return {out:r.out||"",error:r.error};
+}
+
+/* Same rule the main panel uses: percent-encode both fields before they
+ * become a command line, because the line splits on spaces and plenty of
+ * networks and passwords have them. */
+const wifiEsc=v=>encodeURIComponent(v).replace(/[!'()*]/g,
+  c=>"%"+c.charCodeAt(0).toString(16).toUpperCase());
+
+/* ------------------------------------------------------------- mDNS chase
+ * This device is on the portal's own AP, which the board tears down the
+ * moment it joins a real network - so there is nothing to redirect *to*
+ * until a human switches this device back to its normal Wi-Fi. Rather than
+ * fire a blind location.href that would just land on a dead host, poll
+ * quietly with mode:"no-cors" (a plain fetch would be blocked by CORS
+ * entirely, but a no-cors one still rejects on a genuine network failure and
+ * resolves once the host answers, even though the response itself is
+ * unreadable - reachability is all that is needed here) and only navigate
+ * once the target is actually there. Bounded, so an unattended tab does not
+ * poll forever if the network is never switched back. */
+let hubHost="concordia";
+function chaseHost(){
+  const url="http://"+hubHost+".local/";
+  let tries=0;
+  const tick=async()=>{
+    tries++;
+    try{
+      await fetch(url+"api/status",{mode:"no-cors",cache:"no-store"});
+      location.href=url;
+      return;
+    }catch(e){/* not there yet */}
+    if(tries<40)setTimeout(tick,3000);
+  };
+  setTimeout(tick,3000);
+}
+
+async function doLogin(){
+  const name=$("lName").value.trim(), pass=$("lPass").value;
+  const d=await api("/api/session/login",
+    "name="+encodeURIComponent(name)+"&password="+encodeURIComponent(pass));
+  if(!d||d.error){
+    $("lErr").textContent=(d&&d.error)||"Could not sign in.";
+    $("lErr").classList.remove("hide");
+    return;
+  }
+  $("login").classList.add("hide");
+  $("wifi").classList.remove("hide");
+  loadSaved();
+  renderNets([]); /* the "other network" row, even before a scan has run */
+}
+
+/* ----------------------------------------------------------------- list */
+let scanned=[];
+
+function renderNets(list){
+  scanned=list;
+  const rows=list.map((n,i)=>
+    `<li onclick="openDialog(${i})"><span>${esc(n.ssid)}</span>
+       <span class="db">${n.rssi} dBm</span></li>`).join("");
+  $("nets").innerHTML=rows+
+    `<li class="other" onclick="openDialog(-1)"><span>Other network…</span></li>`;
+}
+function esc(s){return s.replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
+
+/* -------------------------------------------------------- saved networks
+ * `wifi list` is still console text, same as the panel's Settings screen -
+ * one line per entry, "  <idx>  <ssid>". Edit is forget-then-save under the
+ * hood, same reason as in the panel: the hub has no in-place update. It does
+ * *not* switch to the edited network - this page might be relying on the
+ * connection it is using right now to even show this list. */
+let savedNets=[];
+function parseWifiList(text){
+  const out=[];
+  (text||"").split("\n").forEach(line=>{
+    const m=line.match(/^\s*(\d+)\s+(.+)$/);
+    if(m)out.push({idx:+m[1],ssid:m[2]});
+  });
+  return out;
+}
+async function loadSaved(){
+  const r=await cmd("wifi list");
+  savedNets=parseWifiList(r.out);
+  $("saved").innerHTML=savedNets.length?savedNets.map(n=>`<li>
+      <span>${esc(n.ssid)}</span>
+      <span style="display:flex;gap:8px;flex:0 0 auto">
+        <button class="ghost sm" data-act="editnet" data-idx="${n.idx}">Edit</button>
+        <button class="ghost sm" data-act="delnet" data-idx="${n.idx}">Remove</button>
+      </span></li>`).join("")
+    : `<li class="other"><span>No saved networks yet.</span></li>`;
+}
+document.addEventListener("click",ev=>{
+  const b=ev.target.closest("#saved button[data-act]");
+  if(!b)return;
+  const idx=+b.dataset.idx, n=savedNets.find(x=>x.idx===idx);
+  if(!n)return;
+  if(b.dataset.act==="delnet")delNet(idx);
+  if(b.dataset.act==="editnet")openEditNet(idx,n.ssid);
+});
+async function delNet(idx){
+  if(!confirm("Forget this network?"))return;
+  await cmd(`wifi del ${idx}`);
+  loadSaved();
+}
+
+async function scan(){
+  $("scanBtn").disabled=true;
+  $("scanBtn").textContent="Scanning…";
+  const r=await cmd("wifi scan");
+  $("scanBtn").disabled=false;
+  $("scanBtn").textContent="Scan for networks";
+  if(r.error){msg("⚠ "+r.error,"err");return;}
+  const found=(r.out||"").split("\n").slice(1)
+    .map(l=>/^\s*(.+?)\s{2,}\(([-\d]+) dBm\)\s*$/.exec(l))
+    .filter(Boolean)
+    .map(m=>({ssid:m[1],rssi:+m[2]}));
+  renderNets(found);
+  msg(found.length?"":"Nothing in range - you can still enter one by hand.");
+}
+
+/* ---------------------------------------------------------------- dialog
+ * Three shapes share the one overlay: a scanned network (name fixed, just
+ * ask for the password), "other" (hidden network, both fields open), and
+ * "edit" (a saved entry - name pre-filled but editable, password blank). */
+let dlgIndex=-2, dlgMode="scan";
+function openDialog(index){
+  dlgMode=index<0?"other":"scan";
+  dlgIndex=index;
+  const other=dlgMode==="other";
+  $("dlgTitle").textContent=other?"Other network":scanned[index].ssid;
+  $("dlgSsidLbl").classList.toggle("hide",!other);
+  $("dlgSsid").classList.toggle("hide",!other);
+  $("dlgSsid").value="";
+  $("dlgPass").value="";
+  $("dlgErr").classList.add("hide");
+  $("dlgBack").classList.add("open");
+  setTimeout(()=>(other?$("dlgSsid"):$("dlgPass")).focus(),50);
+}
+function openEditNet(idx,ssid){
+  dlgMode="edit";
+  dlgIndex=idx;
+  $("dlgTitle").textContent="Edit “"+ssid+"”";
+  $("dlgSsidLbl").classList.remove("hide");
+  $("dlgSsid").classList.remove("hide");
+  $("dlgSsid").value=ssid;
+  $("dlgPass").value="";
+  $("dlgErr").classList.add("hide");
+  $("dlgBack").classList.add("open");
+  setTimeout(()=>$("dlgSsid").focus(),50);
+}
+function dlgClose(){$("dlgBack").classList.remove("open");}
+
+async function dlgJoin(){
+  const ssid=(dlgMode!=="scan"?$("dlgSsid").value:scanned[dlgIndex].ssid).trim();
+  if(!ssid){
+    $("dlgErr").textContent="Type a network name.";
+    $("dlgErr").classList.remove("hide");
+    return;
+  }
+  const pass=$("dlgPass").value;
+  const btns=$("dlgBtns").querySelectorAll("button");
+  btns.forEach(b=>b.disabled=true);
+  $("dlgErr").classList.add("hide");
+
+  if(dlgMode==="edit"){
+    /* Forget-then-save, same reason as loadSaved()'s note above - and no
+     * `wifi join` afterwards: editing a fallback network should not yank
+     * whatever connection got this page loaded in the first place. */
+    await cmd(`wifi del ${dlgIndex}`);
+    const saved=await cmd(`wifi add ${wifiEsc(ssid)} ${wifiEsc(pass)}`);
+    btns.forEach(b=>b.disabled=false);
+    if(saved.error){
+      $("dlgErr").textContent=saved.error;
+      $("dlgErr").classList.remove("hide");
+      return;
+    }
+    dlgClose();
+    loadSaved();
+    return;
+  }
+
+  const saved=await cmd(`wifi add ${wifiEsc(ssid)} ${wifiEsc(pass)}`);
+  btns.forEach(b=>b.disabled=false);
+  if(saved.error){
+    $("dlgErr").textContent=saved.error;
+    $("dlgErr").classList.remove("hide");
+    return;
+  }
+  dlgClose();
+  /* Joining tears this portal down as its first step - the reply, if any,
+   * never arrives. Say so and stop waiting rather than hang on a fetch that
+   * is never coming back. */
+  msg("Joining “"+ssid+"” now — this page will lose the connection "+
+      "as the portal closes. Reconnect this device to your normal network - "+
+      "this page will then find the hub by itself at http://"+hubHost+
+      ".local/ and follow there, no need to hunt for an address.","ok");
+  cmd("wifi join").catch(()=>{});
+  chaseHost();
+}
+
+(async function boot(){
+  const status=await api("/api/status");
+  if(status.brand)$("h1").textContent=status.brand;
+  if(status.hostname)hubHost=status.hostname;
+  if(!status.portal){
+    msg("This hub is online now - following to http://"+hubHost+".local/ …","ok");
+    location.href="http://"+hubHost+".local/";
+    return;
+  }
+  if(!status.users){
+    $("wifi").classList.remove("hide");
+    loadSaved();
+    renderNets([]);
+    return;
+  }
+  const s=await api("/api/session");
+  if(s&&s.ok===false){
+    $("sub").textContent+=" Sign in first - this is the same account as the panel.";
+    $("login").classList.remove("hide");
+    setTimeout(()=>$("lName").focus(),50);
+  }else{
+    $("wifi").classList.remove("hide");
+    loadSaved();
+    renderNets([]);
+  }
+})();
+</script>

@@ -1,0 +1,724 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Concordia — setup</title>
+<style>
+:root{--bg:#14161a;--panel:#1b1e24;--panel2:#20242b;--ink:#e8e8ea;--muted:#8b9099;
+      --line:#2b2f38;--accent:#3b6fd4;--bad:#e0776f;--ok:#6fbf7a}
+*{box-sizing:border-box}
+body{font:16px/1.55 system-ui,-apple-system,sans-serif;margin:0;background:var(--bg);
+     color:var(--ink);min-height:100vh}
+.wrap{max-width:36rem;margin:0 auto;padding:24px 20px 60px}
+header{display:flex;align-items:center;gap:12px;margin-bottom:6px}
+h1{font-size:1.1rem;margin:0;flex:1}
+select#lang{background:var(--panel);color:var(--ink);border:1px solid var(--line);
+     border-radius:7px;padding:.4em .6em;font:inherit}
+.steps{display:flex;gap:5px;margin:18px 0 24px}
+.steps i{flex:1;height:4px;border-radius:3px;background:var(--line)}
+.steps i.on{background:var(--accent)}
+.steps i.done{background:#4a7a4f}
+h2{font-size:1.25rem;margin:0 0 6px}
+p.sub{color:var(--muted);margin:0 0 18px;font-size:.92rem}
+label{display:block;font-size:.85rem;color:var(--muted);margin:14px 0 5px}
+input,select{width:100%;box-sizing:border-box;padding:.6em .7em;border:1px solid var(--line);
+      border-radius:7px;background:var(--panel2);color:var(--ink);font:inherit}
+input:focus,select:focus{outline:2px solid var(--accent);outline-offset:-1px}
+button{font:inherit;padding:.6em 1.1em;border:0;border-radius:7px;background:var(--accent);
+       color:#fff;cursor:pointer}
+button.ghost{background:var(--panel2);border:1px solid var(--line);color:var(--ink)}
+button.danger{background:#7a3a38}
+button:disabled{background:#3a3f48;cursor:default;color:#7d838c}
+button.sm{padding:.35em .7em;font-size:.85em}
+.row{display:flex;gap:10px}
+.row>*{flex:1}
+.btns{display:flex;gap:10px;margin-top:22px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px;margin-top:12px}
+.chk{display:flex;align-items:center;gap:10px;margin:12px 0}
+.chk input{width:18px;height:18px;flex:0 0 auto}
+.list{margin:8px 0 0;padding:0;list-style:none;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.list li{padding:.6em .8em;border-top:1px solid var(--line);font-size:.92rem;
+         display:flex;justify-content:space-between;gap:10px;align-items:center;cursor:pointer}
+.list li:first-child{border-top:0}
+.list li:hover{background:var(--panel2)}
+.list li span.db{color:var(--muted);font-size:.85em;white-space:nowrap}
+.list li.other{color:var(--muted)}
+.note{color:var(--muted);font-size:.85rem;margin-top:6px}
+#msg{margin-top:16px;white-space:pre-wrap;font-size:.9rem;color:var(--muted)}
+#msg.err{color:var(--bad)}
+#msg.ok{color:var(--ok)}
+.hide{display:none}
+.x{background:transparent;border:0;color:var(--muted);cursor:pointer;font-size:1.1rem;padding:0 4px}
+
+#dlgBack{position:fixed;inset:0;background:rgba(6,7,10,.6);display:none;
+         align-items:center;justify-content:center;padding:20px;z-index:20}
+#dlgBack.open{display:flex}
+#dlg{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px;
+     width:100%;max-width:24rem}
+.dlgTitle{font-weight:640;font-size:1.02rem;word-break:break-word;margin-bottom:10px}
+</style>
+
+<div class="wrap">
+<header><h1 id="h1">Concordia — first-run setup</h1>
+  <select id="lang" aria-label="Language" onchange="setLang(this.value)">
+    <option value="en">EN</option><option value="de">DE</option><option value="da">DA</option>
+  </select>
+</header>
+<div class="steps" id="steps"></div>
+
+<div id="body"></div>
+<div id="msg"></div>
+</div>
+
+<!-- Empty on purpose: both openExtra() and openNet() rebuild this from scratch
+     every time they open it. One shared overlay, two unrelated shapes of
+     content - a fixed skeleton here would only fit one of them. -->
+<div id="dlgBack" onclick="if(event.target===this)dlgClose()">
+  <div id="dlg"></div>
+</div>
+
+<script>
+/* ------------------------------------------------------------------ i18n */
+const T={
+en:{title:"Concordia — first-run setup",
+  sUsers:"Accounts",sUsersSub:"Create the admin account for this hub. You can add more people now or later from Settings.",
+  name:"Name",pass:"Password",passConfirm:"Confirm password",
+  admin:"Admin",role:"Role",user:"User",
+  addAnother:"Add another person",bAdd:"Add",bRemove:"Remove",
+  control:"Control",ctlNone:"None",ctlAll:"All devices",ctlList:"Only these endpoints",
+  addDev:"Add devices",remDev:"Remove devices",settings:"Settings",
+  errName:"Name needs at least 2 characters.",
+  errPass:"Password needs at least 8 characters.",
+  errMatch:"Passwords do not match.",
+  sTz:"Time zone",sTzSub:"Stored for later - nothing on this board keeps a clock yet, so nothing uses it today.",
+  tzNow:"Right now there:",
+  sLoc:"Location",sLocSub:"For the weather widget and nothing else. Skip it and the hub stays exactly as anonymous as it is now - this is not asked for again unless you set it here.",
+  bGeo:"Use this device's location",bSkipLoc:"Skip",
+  lat:"Latitude",lon:"Longitude",locPreview:"There right now:",locFail:"Could not read that location.",
+  locInsecure:"This board only offers a plain http:// connection, and browsers refuse device location on that. Type the coordinates in below instead.",
+  sWifi:"Wi-Fi",sWifiSub:"Already connected - this step is only for saving one or more extra networks as a fallback, for example a phone hotspot.",
+  connectedAs:"Connected as",addNet:"Add a network",
+  sFinish:"Done",sFinishSub:"One default layout, ready to change from Settings whenever you like.",
+  finishBody:"Status, your pinned devices, and the pairing code - the same starting point every board gets. Location was set, so temperature, humidity, rain and air quality are pinned too.",
+  finishBodyNoLoc:"Status, your pinned devices, and the pairing code - the same starting point every board gets.",
+  bOpen:"Open the panel",
+  bNext:"Next",bBack:"Back",bSkip:"Skip",bFinish:"Finish setup",bSaving:"Saving…",
+  bScan:"Scan for networks",bOther:"Other network…",dbm:"dBm",nothing:"Nothing in range - you can still enter one by hand.",
+  netSaved:"✓ Saved “{ssid}”. Add another if you like, or continue.",
+  addedHead:"Added this step:",
+  savedNets:"Saved networks",noSavedNets:"No saved networks yet.",
+  bEditNet:"Edit",delNetConfirm:"Forget this network?",
+  savingUsers:"Creating the admin account…",
+  needSsid:"Type a network name.",
+  saveFail:"Could not save the layout - check the connection and try Finish again."},
+de:{title:"Concordia — Ersteinrichtung",
+  sUsers:"Konten",sUsersSub:"Admin-Konto für diesen Hub anlegen. Weitere Personen jetzt oder später über die Einstellungen.",
+  name:"Name",pass:"Passwort",passConfirm:"Passwort bestätigen",
+  admin:"Admin",role:"Rolle",user:"Benutzer",
+  addAnother:"Weitere Person hinzufügen",bAdd:"Hinzufügen",bRemove:"Entfernen",
+  control:"Steuerung",ctlNone:"Keine",ctlAll:"Alle Geräte",ctlList:"Nur diese Endpunkte",
+  addDev:"Geräte hinzufügen",remDev:"Geräte entfernen",settings:"Einstellungen",
+  errName:"Name braucht mindestens 2 Zeichen.",
+  errPass:"Passwort braucht mindestens 8 Zeichen.",
+  errMatch:"Passwörter stimmen nicht überein.",
+  sTz:"Zeitzone",sTzSub:"Wird gespeichert - noch führt nichts auf diesem Board eine Uhr, also nutzt es heute niemand.",
+  tzNow:"Dort ist es gerade:",
+  sLoc:"Standort",sLocSub:"Nur fürs Wetter-Widget, sonst nichts. Überspringen lässt den Hub genauso anonym wie jetzt - das wird nicht wieder gefragt, außer hier.",
+  bGeo:"Standort dieses Geräts verwenden",bSkipLoc:"Überspringen",
+  lat:"Breitengrad",lon:"Längengrad",locPreview:"Dort gerade:",locFail:"Standort konnte nicht gelesen werden.",
+  locInsecure:"Dieses Board bietet nur eine reine http://-Verbindung an, und Browser verweigern den Gerätestandort dabei. Koordinaten unten stattdessen eintippen.",
+  sWifi:"WLAN",sWifiSub:"Schon verbunden - dieser Schritt ist nur, um ein oder mehrere weitere Netze als Rückfall zu speichern, zum Beispiel einen Handy-Hotspot.",
+  connectedAs:"Verbunden als",addNet:"Netzwerk hinzufügen",
+  sFinish:"Fertig",sFinishSub:"Eine Standard-Ansicht, jederzeit über die Einstellungen änderbar.",
+  finishBody:"Status, angeheftete Geräte und der Pairing-Code - der gleiche Start für jedes Board. Ein Standort wurde gesetzt, also sind Temperatur, Feuchtigkeit, Regen und Luftqualität auch angeheftet.",
+  finishBodyNoLoc:"Status, angeheftete Geräte und der Pairing-Code - der gleiche Start für jedes Board.",
+  bOpen:"Oberfläche öffnen",
+  bNext:"Weiter",bBack:"Zurück",bSkip:"Überspringen",bFinish:"Einrichtung abschließen",bSaving:"Speichert…",
+  bScan:"Nach Netzwerken suchen",bOther:"Anderes Netzwerk…",dbm:"dBm",nothing:"Nichts in Reichweite - von Hand eingeben geht trotzdem.",
+  netSaved:"✓ „{ssid}“ gespeichert. Gern noch eins hinzufügen, oder weiter.",
+  addedHead:"In diesem Schritt hinzugefügt:",
+  savedNets:"Gespeicherte Netzwerke",noSavedNets:"Noch keine gespeicherten Netzwerke.",
+  bEditNet:"Bearbeiten",delNetConfirm:"Dieses Netzwerk vergessen?",
+  savingUsers:"Admin-Konto wird angelegt…",
+  needSsid:"Netzwerknamen eingeben.",
+  saveFail:"Layout konnte nicht gespeichert werden - Verbindung prüfen und „Einrichtung abschließen“ erneut versuchen."},
+da:{title:"Concordia — førstegangsopsætning",
+  sUsers:"Konti",sUsersSub:"Opret admin-kontoen for denne hub. Flere personer nu eller senere fra Indstillinger.",
+  name:"Navn",pass:"Adgangskode",passConfirm:"Bekræft adgangskode",
+  admin:"Admin",role:"Rolle",user:"Bruger",
+  addAnother:"Tilføj en person mere",bAdd:"Tilføj",bRemove:"Fjern",
+  control:"Styring",ctlNone:"Ingen",ctlAll:"Alle enheder",ctlList:"Kun disse endpoints",
+  addDev:"Tilføj enheder",remDev:"Fjern enheder",settings:"Indstillinger",
+  errName:"Navnet skal være mindst 2 tegn.",
+  errPass:"Adgangskoden skal være mindst 8 tegn.",
+  errMatch:"Adgangskoderne matcher ikke.",
+  sTz:"Tidszone",sTzSub:"Gemmes - intet på dette board holder styr på tiden endnu, så intet bruger det i dag.",
+  tzNow:"Der er klokken lige nu:",
+  sLoc:"Placering",sLocSub:"Kun til vejr-widgeten, ellers intet. Spring over, og hubben forbliver lige så anonym som nu - der spørges ikke igen, medmindre du sætter det her.",
+  bGeo:"Brug denne enheds placering",bSkipLoc:"Spring over",
+  lat:"Breddegrad",lon:"Længdegrad",locPreview:"Der lige nu:",locFail:"Kunne ikke læse placeringen.",
+  locInsecure:"Dette board tilbyder kun en almindelig http://-forbindelse, og browsere nægter enhedens placering på den. Skriv koordinaterne ind nedenfor i stedet.",
+  sWifi:"Wi-Fi",sWifiSub:"Allerede forbundet - dette trin er kun for at gemme et eller flere ekstra netværk som reserve, fx en mobil-hotspot.",
+  connectedAs:"Forbundet som",addNet:"Tilføj et netværk",
+  sFinish:"Færdig",sFinishSub:"Et standardlayout, klar til at ændre fra Indstillinger når som helst.",
+  finishBody:"Status, dine fastgjorte enheder og parringskoden - samme udgangspunkt for hver hub. Der blev angivet en placering, så temperatur, fugtighed, regn og luftkvalitet er også fastgjort.",
+  finishBodyNoLoc:"Status, dine fastgjorte enheder og parringskoden - samme udgangspunkt for hver hub.",
+  bOpen:"Åbn panelet",
+  bNext:"Næste",bBack:"Tilbage",bSkip:"Spring over",bFinish:"Afslut opsætning",bSaving:"Gemmer…",
+  bScan:"Søg efter netværk",bOther:"Andet netværk…",dbm:"dBm",nothing:"Intet i rækkevidde - du kan stadig indtaste et selv.",
+  netSaved:"✓ “{ssid}” gemt. Tilføj gerne en mere, eller fortsæt.",
+  addedHead:"Tilføjet i dette trin:",
+  savedNets:"Gemte netværk",noSavedNets:"Endnu ingen gemte netværk.",
+  bEditNet:"Rediger",delNetConfirm:"Glem dette netværk?",
+  savingUsers:"Opretter admin-kontoen…",
+  needSsid:"Skriv et netværksnavn.",
+  saveFail:"Kunne ikke gemme layoutet - tjek forbindelsen og prøv „Afslut opsætning“ igen."}};
+
+let lang="en";
+const t=k=>(T[lang]&&T[lang][k])||T.en[k]||k;
+function setLang(v){lang=v;render();}
+
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+function msg(text,cls){const m=$("msg");m.textContent=text||"";m.className=cls||"";}
+
+async function api(path,body){
+  const o=body!==undefined
+    ?{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body}
+    :{};
+  try{return await(await fetch(path,o)).json();}catch(e){return {};}
+}
+async function cmd(text){
+  const r=await api("/api/cmd","cmd="+encodeURIComponent(text));
+  return {out:r.out||"",error:r.error};
+}
+const wifiEsc=v=>encodeURIComponent(v).replace(/[!'()*]/g,
+  c=>"%"+c.charCodeAt(0).toString(16).toUpperCase());
+const uid=()=>Math.random().toString(36).slice(2,9);
+
+/* ---------------------------------------------------------------- state */
+let step=1;
+const TOTAL=5;
+const wiz={
+  adminName:"",adminPass:"",
+  extra:[], /* {id,name,pass,role,control,add,remove,settings} */
+  tz:Intl.DateTimeFormat().resolvedOptions().timeZone||"",
+  tzOffset:0,
+  lat:"",lon:"",
+  addedNets:[], /* ssids saved this session, so several can be added in a row */
+};
+
+const TZ=["Africa/Abidjan","Africa/Accra","Africa/Addis_Ababa","Africa/Algiers","Africa/Asmara","Africa/Asmera","Africa/Bamako","Africa/Bangui","Africa/Banjul","Africa/Bissau","Africa/Blantyre","Africa/Brazzaville","Africa/Bujumbura","Africa/Cairo","Africa/Casablanca","Africa/Ceuta","Africa/Conakry","Africa/Dakar","Africa/Dar_es_Salaam","Africa/Djibouti","Africa/Douala","Africa/El_Aaiun","Africa/Freetown","Africa/Gaborone","Africa/Harare","Africa/Johannesburg","Africa/Juba","Africa/Kampala","Africa/Khartoum","Africa/Kigali","Africa/Kinshasa","Africa/Lagos","Africa/Libreville","Africa/Lome","Africa/Luanda","Africa/Lubumbashi","Africa/Lusaka","Africa/Malabo","Africa/Maputo","Africa/Maseru","Africa/Mbabane","Africa/Mogadishu","Africa/Monrovia","Africa/Nairobi","Africa/Ndjamena","Africa/Niamey","Africa/Nouakchott","Africa/Ouagadougou","Africa/Porto-Novo","Africa/Sao_Tome","Africa/Timbuktu","Africa/Tripoli","Africa/Tunis","Africa/Windhoek","America/Adak","America/Anchorage","America/Anguilla","America/Antigua","America/Araguaina","America/Argentina/Buenos_Aires","America/Argentina/Catamarca","America/Argentina/ComodRivadavia","America/Argentina/Cordoba","America/Argentina/Jujuy","America/Argentina/La_Rioja","America/Argentina/Mendoza","America/Argentina/Rio_Gallegos","America/Argentina/Salta","America/Argentina/San_Juan","America/Argentina/San_Luis","America/Argentina/Tucuman","America/Argentina/Ushuaia","America/Aruba","America/Asuncion","America/Atikokan","America/Atka","America/Bahia","America/Bahia_Banderas","America/Barbados","America/Belem","America/Belize","America/Blanc-Sablon","America/Boa_Vista","America/Bogota","America/Boise","America/Buenos_Aires","America/Cambridge_Bay","America/Campo_Grande","America/Cancun","America/Caracas","America/Catamarca","America/Cayenne","America/Cayman","America/Chicago","America/Chihuahua","America/Ciudad_Juarez","America/Coral_Harbour","America/Cordoba","America/Costa_Rica","America/Coyhaique","America/Creston","America/Cuiaba","America/Curacao","America/Danmarkshavn","America/Dawson","America/Dawson_Creek","America/Denver","America/Detroit","America/Dominica","America/Edmonton","America/Eirunepe","America/El_Salvador","America/Ensenada","America/Fort_Nelson","America/Fort_Wayne","America/Fortaleza","America/Glace_Bay","America/Godthab","America/Goose_Bay","America/Grand_Turk","America/Grenada","America/Guadeloupe","America/Guatemala","America/Guayaquil","America/Guyana","America/Halifax","America/Havana","America/Hermosillo","America/Indiana/Indianapolis","America/Indiana/Knox","America/Indiana/Marengo","America/Indiana/Petersburg","America/Indiana/Tell_City","America/Indiana/Vevay","America/Indiana/Vincennes","America/Indiana/Winamac","America/Indianapolis","America/Inuvik","America/Iqaluit","America/Jamaica","America/Jujuy","America/Juneau","America/Kentucky/Louisville","America/Kentucky/Monticello","America/Knox_IN","America/Kralendijk","America/La_Paz","America/Lima","America/Los_Angeles","America/Louisville","America/Lower_Princes","America/Maceio","America/Managua","America/Manaus","America/Marigot","America/Martinique","America/Matamoros","America/Mazatlan","America/Mendoza","America/Menominee","America/Merida","America/Metlakatla","America/Mexico_City","America/Miquelon","America/Moncton","America/Monterrey","America/Montevideo","America/Montreal","America/Montserrat","America/Nassau","America/New_York","America/Nipigon","America/Nome","America/Noronha","America/North_Dakota/Beulah","America/North_Dakota/Center","America/North_Dakota/New_Salem","America/Nuuk","America/Ojinaga","America/Panama","America/Pangnirtung","America/Paramaribo","America/Phoenix","America/Port-au-Prince","America/Port_of_Spain","America/Porto_Acre","America/Porto_Velho","America/Puerto_Rico","America/Punta_Arenas","America/Rainy_River","America/Rankin_Inlet","America/Recife","America/Regina","America/Resolute","America/Rio_Branco","America/Rosario","America/Santa_Isabel","America/Santarem","America/Santiago","America/Santo_Domingo","America/Sao_Paulo","America/Scoresbysund","America/Shiprock","America/Sitka","America/St_Barthelemy","America/St_Johns","America/St_Kitts","America/St_Lucia","America/St_Thomas","America/St_Vincent","America/Swift_Current","America/Tegucigalpa","America/Thule","America/Thunder_Bay","America/Tijuana","America/Toronto","America/Tortola","America/Vancouver","America/Virgin","America/Whitehorse","America/Winnipeg","America/Yakutat","America/Yellowknife","Antarctica/Casey","Antarctica/Davis","Antarctica/DumontDUrville","Antarctica/Macquarie","Antarctica/Mawson","Antarctica/McMurdo","Antarctica/Palmer","Antarctica/Rothera","Antarctica/South_Pole","Antarctica/Syowa","Antarctica/Troll","Antarctica/Vostok","Arctic/Longyearbyen","Asia/Aden","Asia/Almaty","Asia/Amman","Asia/Anadyr","Asia/Aqtau","Asia/Aqtobe","Asia/Ashgabat","Asia/Ashkhabad","Asia/Atyrau","Asia/Baghdad","Asia/Bahrain","Asia/Baku","Asia/Bangkok","Asia/Barnaul","Asia/Beirut","Asia/Bishkek","Asia/Brunei","Asia/Calcutta","Asia/Chita","Asia/Choibalsan","Asia/Chongqing","Asia/Chungking","Asia/Colombo","Asia/Dacca","Asia/Damascus","Asia/Dhaka","Asia/Dili","Asia/Dubai","Asia/Dushanbe","Asia/Famagusta","Asia/Gaza","Asia/Harbin","Asia/Hebron","Asia/Ho_Chi_Minh","Asia/Hong_Kong","Asia/Hovd","Asia/Irkutsk","Asia/Istanbul","Asia/Jakarta","Asia/Jayapura","Asia/Jerusalem","Asia/Kabul","Asia/Kamchatka","Asia/Karachi","Asia/Kashgar","Asia/Kathmandu","Asia/Katmandu","Asia/Khandyga","Asia/Kolkata","Asia/Krasnoyarsk","Asia/Kuala_Lumpur","Asia/Kuching","Asia/Kuwait","Asia/Macao","Asia/Macau","Asia/Magadan","Asia/Makassar","Asia/Manila","Asia/Muscat","Asia/Nicosia","Asia/Novokuznetsk","Asia/Novosibirsk","Asia/Omsk","Asia/Oral","Asia/Phnom_Penh","Asia/Pontianak","Asia/Pyongyang","Asia/Qatar","Asia/Qostanay","Asia/Qyzylorda","Asia/Rangoon","Asia/Riyadh","Asia/Saigon","Asia/Sakhalin","Asia/Samarkand","Asia/Seoul","Asia/Shanghai","Asia/Singapore","Asia/Srednekolymsk","Asia/Taipei","Asia/Tashkent","Asia/Tbilisi","Asia/Tehran","Asia/Tel_Aviv","Asia/Thimbu","Asia/Thimphu","Asia/Tokyo","Asia/Tomsk","Asia/Ujung_Pandang","Asia/Ulaanbaatar","Asia/Ulan_Bator","Asia/Urumqi","Asia/Ust-Nera","Asia/Vientiane","Asia/Vladivostok","Asia/Yakutsk","Asia/Yangon","Asia/Yekaterinburg","Asia/Yerevan","Atlantic/Azores","Atlantic/Bermuda","Atlantic/Canary","Atlantic/Cape_Verde","Atlantic/Faeroe","Atlantic/Faroe","Atlantic/Jan_Mayen","Atlantic/Madeira","Atlantic/Reykjavik","Atlantic/South_Georgia","Atlantic/St_Helena","Atlantic/Stanley","Australia/ACT","Australia/Adelaide","Australia/Brisbane","Australia/Broken_Hill","Australia/Canberra","Australia/Currie","Australia/Darwin","Australia/Eucla","Australia/Hobart","Australia/LHI","Australia/Lindeman","Australia/Lord_Howe","Australia/Melbourne","Australia/NSW","Australia/North","Australia/Perth","Australia/Queensland","Australia/South","Australia/Sydney","Australia/Tasmania","Australia/Victoria","Australia/West","Australia/Yancowinna","Brazil/Acre","Brazil/DeNoronha","Brazil/East","Brazil/West","Canada/Atlantic","Canada/Central","Canada/Eastern","Canada/Mountain","Canada/Newfoundland","Canada/Pacific","Canada/Saskatchewan","Canada/Yukon","Chile/Continental","Chile/EasterIsland","Europe/Amsterdam","Europe/Andorra","Europe/Astrakhan","Europe/Athens","Europe/Belfast","Europe/Belgrade","Europe/Berlin","Europe/Bratislava","Europe/Brussels","Europe/Bucharest","Europe/Budapest","Europe/Busingen","Europe/Chisinau","Europe/Copenhagen","Europe/Dublin","Europe/Gibraltar","Europe/Guernsey","Europe/Helsinki","Europe/Isle_of_Man","Europe/Istanbul","Europe/Jersey","Europe/Kaliningrad","Europe/Kiev","Europe/Kirov","Europe/Kyiv","Europe/Lisbon","Europe/Ljubljana","Europe/London","Europe/Luxembourg","Europe/Madrid","Europe/Malta","Europe/Mariehamn","Europe/Minsk","Europe/Monaco","Europe/Moscow","Europe/Nicosia","Europe/Oslo","Europe/Paris","Europe/Podgorica","Europe/Prague","Europe/Riga","Europe/Rome","Europe/Samara","Europe/San_Marino","Europe/Sarajevo","Europe/Saratov","Europe/Simferopol","Europe/Skopje","Europe/Sofia","Europe/Stockholm","Europe/Tallinn","Europe/Tirane","Europe/Tiraspol","Europe/Ulyanovsk","Europe/Uzhgorod","Europe/Vaduz","Europe/Vatican","Europe/Vienna","Europe/Vilnius","Europe/Volgograd","Europe/Warsaw","Europe/Zagreb","Europe/Zaporozhye","Europe/Zurich","Indian/Antananarivo","Indian/Chagos","Indian/Christmas","Indian/Cocos","Indian/Comoro","Indian/Kerguelen","Indian/Mahe","Indian/Maldives","Indian/Mauritius","Indian/Mayotte","Indian/Reunion","Mexico/BajaNorte","Mexico/BajaSur","Mexico/General","Pacific/Apia","Pacific/Auckland","Pacific/Bougainville","Pacific/Chatham","Pacific/Chuuk","Pacific/Easter","Pacific/Efate","Pacific/Enderbury","Pacific/Fakaofo","Pacific/Fiji","Pacific/Funafuti","Pacific/Galapagos","Pacific/Gambier","Pacific/Guadalcanal","Pacific/Guam","Pacific/Honolulu","Pacific/Johnston","Pacific/Kanton","Pacific/Kiritimati","Pacific/Kosrae","Pacific/Kwajalein","Pacific/Majuro","Pacific/Marquesas","Pacific/Midway","Pacific/Nauru","Pacific/Niue","Pacific/Norfolk","Pacific/Noumea","Pacific/Pago_Pago","Pacific/Palau","Pacific/Pitcairn","Pacific/Pohnpei","Pacific/Ponape","Pacific/Port_Moresby","Pacific/Rarotonga","Pacific/Saipan","Pacific/Samoa","Pacific/Tahiti","Pacific/Tarawa","Pacific/Tongatapu","Pacific/Truk","Pacific/Wake","Pacific/Wallis","Pacific/Yap","US/Alaska","US/Aleutian","US/Arizona","US/Central","US/East-Indiana","US/Eastern","US/Hawaii","US/Indiana-Starke","US/Michigan","US/Mountain","US/Pacific","US/Samoa"];
+
+function tzOffsetMinutes(tz){
+  try{
+    const parts=new Intl.DateTimeFormat("en-US",{timeZone:tz,timeZoneName:"shortOffset"}).formatToParts(new Date());
+    const part=(parts.find(p=>p.type==="timeZoneName")||{}).value||"";
+    const m=/GMT([+-])(\d+)(?::(\d+))?/.exec(part);
+    if(!m)return 0;
+    return (m[1]==="-"?-1:1)*((+m[2])*60+(m[3]?+m[3]:0));
+  }catch(e){return 0;}
+}
+function fmtOffset(min){
+  const sign=min<0?"-":"+", a=Math.abs(min);
+  return "UTC"+sign+String(Math.floor(a/60)).padStart(2,"0")+":"+String(a%60).padStart(2,"0");
+}
+
+/* ---------------------------------------------------------- step: users */
+function stepUsers(){
+  return `<h2>${esc(t("sUsers"))}</h2><p class="sub">${esc(t("sUsersSub"))}</p>
+    <div class="card">
+      <div class="note" style="margin-top:0">${esc(t("admin"))}</div>
+      <label>${esc(t("name"))}</label>
+      <input id="uName" value="${esc(wiz.adminName)}"
+        oninput="wiz.adminName=this.value;updateFwdState()">
+      <div class="row">
+        <div><label>${esc(t("pass"))}</label>
+          <input id="uPass" type="password" autocomplete="new-password" oninput="updateFwdState()"></div>
+        <div><label>${esc(t("passConfirm"))}</label>
+          <input id="uPass2" type="password" autocomplete="new-password" oninput="updateFwdState()"></div>
+      </div>
+    </div>
+    <div id="extraList"></div>
+    <div class="btns"><button class="ghost" onclick="openExtra()">${esc(t("addAnother"))}</button></div>`;
+}
+function paintExtra(){
+  $("extraList").innerHTML=wiz.extra.map((u,i)=>`<div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <b>${esc(u.name)}</b>
+        <button class="x" onclick="wiz.extra.splice(${i},1);paintExtra()">✕</button>
+      </div>
+      <div class="note">${esc(t(u.role==="admin"?"admin":"user"))}${u.role==="admin"?"":" · "+permSummary(u)}</div>
+    </div>`).join("");
+}
+function permSummary(u){
+  const bits=[u.control==="all"?t("ctlAll"):u.control?"EP "+u.control:t("ctlNone")];
+  if(u.add)bits.push(t("addDev"));
+  if(u.remove)bits.push(t("remDev"));
+  if(u.settings)bits.push(t("settings"));
+  return bits.join(" · ");
+}
+function openExtra(){
+  showDlgGeneric(`
+    <label>${esc(t("name"))}</label><input id="eName">
+    <label>${esc(t("pass"))}</label><input id="ePass" type="password" autocomplete="new-password">
+    <label>${esc(t("role"))}</label>
+    <select id="eRole" onchange="$('ePermBox').style.display=this.value==='admin'?'none':'block'">
+      <option value="user">${esc(t("user"))}</option><option value="admin">${esc(t("admin"))}</option>
+    </select>
+    <div id="ePermBox">
+      <label>${esc(t("control"))}</label>
+      <select id="eControl" onchange="$('eControlList').style.display=this.value==='list'?'':'none'">
+        <option value="none">${esc(t("ctlNone"))}</option>
+        <option value="all">${esc(t("ctlAll"))}</option>
+        <option value="list">${esc(t("ctlList"))}</option>
+      </select>
+      <input id="eControlList" placeholder="4,7,12" style="margin-top:6px;display:none">
+      <div class="chk"><input type="checkbox" id="eAdd"><span>${esc(t("addDev"))}</span></div>
+      <div class="chk"><input type="checkbox" id="eRemove"><span>${esc(t("remDev"))}</span></div>
+      <div class="chk"><input type="checkbox" id="eSettings"><span>${esc(t("settings"))}</span></div>
+    </div>`,
+    t("addAnother"), t("bAdd"), ()=>{
+      const name=$("eName").value.trim(), pass=$("ePass").value, role=$("eRole").value;
+      if(name.length<2){return t("errName");}
+      if(pass.length<8){return t("errPass");}
+      const ctl=$("eControl").value;
+      wiz.extra.push({id:uid(),name,pass,role,
+        control:ctl==="list"?$("eControlList").value.trim():ctl,
+        add:$("eAdd").checked,remove:$("eRemove").checked,settings:$("eSettings").checked});
+      paintExtra();
+      return null;
+    });
+}
+
+/* The shared overlay: #dlg is rebuilt from nothing every time something
+ * opens it, here and in openNet() below. Reusing a fixed skeleton between
+ * the two used to mean whichever opened second inherited the first one's
+ * leftover markup - the "Join" dialog's own fields, gone the moment "add
+ * another person" had ever run once. Building from scratch each time means
+ * neither can leave anything behind for the other to trip over. */
+function showDlgGeneric(bodyHtml,title,okLabel,onOk){
+  $("dlg").innerHTML=`<div class="dlgTitle">${esc(title)}</div>
+    ${bodyHtml}
+    <div class="btns"><button id="dlgOk">${esc(okLabel)}</button>
+      <button class="ghost" onclick="dlgClose()">${esc(t("bBack"))}</button></div>
+    <div id="dlgErr" class="hide" style="color:var(--bad);margin-top:10px"></div>`;
+  $("dlgOk").onclick=()=>{
+    const err=onOk();
+    if(err){$("dlgErr").textContent=err;$("dlgErr").classList.remove("hide");return;}
+    dlgClose();
+  };
+  $("dlgBack").classList.add("open");
+}
+function dlgClose(){$("dlgBack").classList.remove("open");}
+
+/* Runs once, even if the visitor goes Back to step 1 and hits Next again to
+ * review it - a second attempt would just be told the name is already
+ * taken, which reads as a bug rather than as "already done". Renaming the
+ * admin, if a typo slipped through, is a job for the panel afterwards. */
+let usersCreated=false;
+
+async function saveUsers(){
+  if(!usersCreated){
+    const name=$("uName").value.trim(), pass=$("uPass").value, pass2=$("uPass2").value;
+    if(name.length<2)return t("errName");
+    if(pass.length<8)return t("errPass");
+    if(pass!==pass2)return t("errMatch");
+    wiz.adminName=name; wiz.adminPass=pass;
+
+    msg(t("savingUsers"));
+    const created=await api("/api/users",
+      "name="+encodeURIComponent(name)+"&password="+encodeURIComponent(pass)+"&role=admin");
+    if(created.error){msg("",""); return created.error;}
+    const login=await api("/api/session/login",
+      "name="+encodeURIComponent(name)+"&password="+encodeURIComponent(pass));
+    if(login.error){msg("","");return login.error;}
+    usersCreated=true;
+  }
+
+  /* Extra people are each created once too, so going back to add one more
+   * after the fact does not resubmit the ones that already exist. */
+  for(const u of wiz.extra){
+    if(u.created)continue;
+    const body=new URLSearchParams();
+    body.set("name",u.name);body.set("password",u.pass);body.set("role",u.role);
+    if(u.role!=="admin"){
+      body.set("control",u.control||"none");
+      body.set("add",u.add?"1":"0");body.set("remove",u.remove?"1":"0");body.set("settings",u.settings?"1":"0");
+    }
+    const r=await api("/api/users",body.toString());
+    if(r.error){
+      /* Used to fail silently here and move on to the next person - a 401,
+       * say, would leave someone missing with no indication anything went
+       * wrong. Stop and say so instead; they are still in wiz.extra (not
+       * marked created), so Next tries this same one again rather than
+       * skipping it. */
+      return u.name+": "+r.error;
+    }
+    u.created=true;
+  }
+  msg("","");
+  return null;
+}
+
+/* -------------------------------------------------------- step: timezone */
+function stepTz(){
+  const opts=TZ.map(z=>`<option value="${z}" ${z===wiz.tz?"selected":""}>${z.replace(/_/g," ")}</option>`).join("");
+  return `<h2>${esc(t("sTz"))}</h2><p class="sub">${esc(t("sTzSub"))}</p>
+    <label>${esc(t("sTz"))}</label>
+    <select id="tzSel" onchange="paintTzPreview()">${opts}</select>
+    <p class="note" id="tzPreview"></p>`;
+}
+function paintTzPreview(){
+  const tz=$("tzSel").value;
+  wiz.tz=tz;
+  wiz.tzOffset=tzOffsetMinutes(tz);
+  let clock="—";
+  try{clock=new Date().toLocaleString(undefined,{timeZone:tz,hour:"2-digit",minute:"2-digit"});}catch(e){}
+  $("tzPreview").textContent=t("tzNow")+" "+clock+" ("+fmtOffset(wiz.tzOffset)+")";
+}
+
+/* -------------------------------------------------------- step: location */
+function stepLocation(){
+  /* Plain HTTP is not a secure context, and most browsers refuse
+   * navigator.geolocation there - but not reliably enough to refuse the
+   * button over it: some let it through anyway (an existing per-origin grant,
+   * a relaxed profile, a browser that simply differs), and it has worked here
+   * before. So: warn, do not block. The button stays live and useGeo() still
+   * makes the real call; only an actual failure shows the message below. */
+  const insecure=!window.isSecureContext;
+  return `<h2>${esc(t("sLoc"))}</h2><p class="sub">${esc(t("sLocSub"))}</p>
+    ${insecure?`<p class="note">${esc(t("locInsecure"))}</p>`:""}
+    <div class="btns" style="margin-top:0">
+      <button onclick="useGeo()">${esc(t("bGeo"))}</button>
+      <button class="ghost" onclick="wiz.lat='';wiz.lon='';$('lLat').value='';$('lLon').value='';paintLoc()">${esc(t("bSkipLoc"))}</button>
+    </div>
+    <div class="row">
+      <div><label>${esc(t("lat"))}</label><input id="lLat" value="${esc(wiz.lat)}" onchange="wiz.lat=this.value;paintLoc()"></div>
+      <div><label>${esc(t("lon"))}</label><input id="lLon" value="${esc(wiz.lon)}" onchange="wiz.lon=this.value;paintLoc()"></div>
+    </div>
+    <p class="note" id="locPreview"></p>`;
+}
+function useGeo(){
+  if(!navigator.geolocation){msg(t("locFail"),"err");return;}
+  navigator.geolocation.getCurrentPosition(pos=>{
+    wiz.lat=pos.coords.latitude.toFixed(4);
+    wiz.lon=pos.coords.longitude.toFixed(4);
+    $("lLat").value=wiz.lat; $("lLon").value=wiz.lon;
+    paintLoc();
+  },err=>{
+    /* code 1 = PERMISSION_DENIED, which is also what an insecure-origin
+     * refusal comes back as - point at the actual reason when it looks like
+     * that one rather than the generic message. */
+    const blocked=err&&err.code===1&&!window.isSecureContext;
+    msg(t(blocked?"locInsecure":"locFail"),"err");
+  });
+}
+async function paintLoc(){
+  const p=$("locPreview");
+  if(!wiz.lat||!wiz.lon){p.textContent="";return;}
+  p.textContent="…";
+  try{
+    const r=await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${wiz.lat}&longitude=${wiz.lon}&current=temperature_2m`);
+    const j=await r.json();
+    p.textContent=t("locPreview")+" "+j.current.temperature_2m+" °C";
+  }catch(e){p.textContent=t("locFail");}
+}
+
+/* -------------------------------------------------------------- step: wifi */
+let scanned=[];
+function stepWifi(){
+  return `<h2>${esc(t("sWifi"))}</h2><p class="sub">${esc(t("sWifiSub"))}</p>
+    <p class="note" id="wifiNow">${esc(t("connectedAs"))} …</p>
+
+    <div class="note" style="margin:14px 0 4px">${esc(t("savedNets"))}</div>
+    <ul class="list" id="savedNets"></ul>
+
+    <button class="ghost" id="scanBtn" onclick="scan()" style="margin-top:18px">${esc(t("bScan"))}</button>
+    <ul class="list" id="nets"></ul>
+    <div id="addedWrap" class="hide">
+      <div class="note" style="margin-top:16px">${esc(t("addedHead"))}</div>
+      <ul class="list" id="addedNets"></ul>
+    </div>`;
+}
+async function paintWifiNow(){
+  const s=await api("/api/status");
+  /* Async: clicking past this step before the fetch resolves means the DOM it
+   * was meant for is already gone, replaced by render() for whichever step
+   * came next - not an error, just a stale paint arriving late. */
+  const el=$("wifiNow");
+  if(el)el.textContent=t("connectedAs")+" “"+(s.ssid||"?")+"” ("+(s.ip||"?")+")";
+}
+
+/* -------------------------------------------------------- saved networks
+ * Requested after the first real run: this step could add a network but not
+ * remove or fix one. Same forget-then-save edit as the panel's Settings
+ * screen and the portal page - the hub has no in-place update - and, like
+ * the portal's version, editing does not call `wifi join`: this step is
+ * reached because the hub is already online, and there is no reason for
+ * fixing a *fallback* entry to touch the connection in use right now.
+ */
+let savedNets=[];
+function parseWifiList(text){
+  const out=[];
+  (text||"").split("\n").forEach(line=>{
+    const m=line.match(/^\s*(\d+)\s+(.+)$/);
+    if(m)out.push({idx:+m[1],ssid:m[2]});
+  });
+  return out;
+}
+async function loadSavedNets(){
+  const r=await cmd("wifi list");
+  savedNets=parseWifiList(r.out);
+  const el=$("savedNets");
+  if(!el)return; /* same race as paintWifiNow() - stepped past before this resolved */
+  el.innerHTML=savedNets.length?savedNets.map(n=>`<li>
+      <span>${esc(n.ssid)}</span>
+      <span style="display:flex;gap:8px;flex:0 0 auto">
+        <button class="ghost sm" data-act="editnet" data-idx="${n.idx}">${esc(t("bEditNet"))}</button>
+        <button class="ghost sm" data-act="delnet" data-idx="${n.idx}">${esc(t("bRemove"))}</button>
+      </span></li>`).join("")
+    : `<li class="other"><span>${esc(t("noSavedNets"))}</span></li>`;
+}
+document.addEventListener("click",ev=>{
+  const b=ev.target.closest("#savedNets button[data-act]");
+  if(!b)return;
+  const idx=+b.dataset.idx, n=savedNets.find(x=>x.idx===idx);
+  if(!n)return;
+  if(b.dataset.act==="delnet")delSavedNet(idx);
+  if(b.dataset.act==="editnet")openEditNet(idx,n.ssid);
+});
+async function delSavedNet(idx){
+  if(!confirm(t("delNetConfirm")))return;
+  await cmd(`wifi del ${idx}`);
+  loadSavedNets();
+}
+function openEditNet(idx,ssid){
+  $("dlg").innerHTML=`
+    <div class="dlgTitle">${esc(t("bEditNet"))} “${esc(ssid)}”</div>
+    <label>Network name</label><input id="dlgSsid" value="${esc(ssid)}">
+    <label>${esc(t("pass"))}</label>
+    <input id="dlgPass" type="password" onkeydown="if(event.key==='Enter')$('dlgJoinBtn').click()">
+    <div class="btns">
+      <button id="dlgJoinBtn">${esc(t("bSave"))}</button>
+      <button class="ghost" onclick="dlgClose()">${esc(t("bBack"))}</button>
+    </div>
+    <div id="dlgErr" class="hide" style="color:var(--bad);margin-top:10px"></div>`;
+  $("dlgJoinBtn").onclick=async()=>{
+    const ssid2=$("dlgSsid").value.trim();
+    if(!ssid2){$("dlgErr").textContent=t("needSsid");$("dlgErr").classList.remove("hide");return;}
+    const pass=$("dlgPass").value;
+    $("dlgJoinBtn").disabled=true;
+    await cmd(`wifi del ${idx}`);
+    const saved=await cmd(`wifi add ${wifiEsc(ssid2)} ${wifiEsc(pass)}`);
+    $("dlgJoinBtn").disabled=false;
+    if(saved.error){$("dlgErr").textContent=saved.error;$("dlgErr").classList.remove("hide");return;}
+    dlgClose();
+    loadSavedNets();
+  };
+  $("dlgBack").classList.add("open");
+  setTimeout(()=>$("dlgSsid").focus(),50);
+}
+function renderNets(list){
+  scanned=list;
+  const rows=list.map((n,i)=>`<li onclick="openNet(${i})"><span>${esc(n.ssid)}</span>
+      <span class="db">${n.rssi} ${esc(t("dbm"))}</span></li>`).join("");
+  $("nets").innerHTML=rows+`<li class="other" onclick="openNet(-1)"><span>${esc(t("bOther"))}</span></li>`;
+  paintAddedNets();
+}
+/* The running list of what has been saved this step, so it is obvious that
+ * adding a second or third network is possible and that the first one
+ * actually took - nothing else on this page says so once the dialog closes. */
+function paintAddedNets(){
+  const wrap=$("addedWrap"); if(!wrap)return;
+  wrap.classList.toggle("hide",wiz.addedNets.length===0);
+  $("addedNets").innerHTML=wiz.addedNets.map(s=>
+    `<li><span>✓ ${esc(s)}</span></li>`).join("");
+}
+async function scan(){
+  $("scanBtn").disabled=true;
+  const r=await cmd("wifi scan");
+  $("scanBtn").disabled=false;
+  if(r.error){msg("⚠ "+r.error,"err");return;}
+  const found=(r.out||"").split("\n").slice(1)
+    .map(l=>/^\s*(.+?)\s{2,}\(([-\d]+) dBm\)\s*$/.exec(l)).filter(Boolean)
+    .map(m=>({ssid:m[1],rssi:+m[2]}));
+  renderNets(found);
+  msg(found.length?"":t("nothing"));
+}
+function openNet(index){
+  const other=index<0;
+  $("dlg").innerHTML=`
+    <div class="dlgTitle">${esc(other?t("bOther"):scanned[index].ssid)}</div>
+    ${other?`<label>Network name</label><input id="dlgSsid">`:""}
+    <label>${esc(t("pass"))}</label>
+    <input id="dlgPass" type="password" onkeydown="if(event.key==='Enter')$('dlgJoinBtn').click()">
+    <div class="btns">
+      <button id="dlgJoinBtn">${esc(t("bAdd"))}</button>
+      <button class="ghost" onclick="dlgClose()">${esc(t("bBack"))}</button>
+    </div>
+    <div id="dlgErr" class="hide" style="color:var(--bad);margin-top:10px"></div>`;
+  $("dlgJoinBtn").onclick=async()=>{
+    const ssid=(other?$("dlgSsid").value:scanned[index].ssid).trim();
+    if(!ssid){$("dlgErr").textContent=t("needSsid");$("dlgErr").classList.remove("hide");return;}
+    const pass=$("dlgPass").value;
+    $("dlgJoinBtn").disabled=true;
+    /* Only "wifi add" - this saves the network, it does not switch to it.
+     * Reaching this page at all means the hub is already online, so there
+     * is nothing to join; switching networks belongs to the portal page
+     * for exactly that reason - see portal.html. */
+    const saved=await cmd(`wifi add ${wifiEsc(ssid)} ${wifiEsc(pass)}`);
+    $("dlgJoinBtn").disabled=false;
+    if(saved.error){$("dlgErr").textContent=saved.error;$("dlgErr").classList.remove("hide");return;}
+    dlgClose();
+    wiz.addedNets.push(ssid);
+    paintAddedNets();
+    loadSavedNets();
+    msg(t("netSaved").replace("{ssid}",ssid),"ok");
+  };
+  $("dlgBack").classList.add("open");
+}
+
+/* -------------------------------------------------------------- step: finish */
+function stepFinish(){
+  return `<h2>${esc(t("sFinish"))}</h2><p class="sub">${esc(t("sFinishSub"))}</p>
+    <p class="note">${esc(wiz.lat?t("finishBody"):t("finishBodyNoLoc"))}</p>`;
+}
+async function finishSetup(){
+  const devices=(await api("/api/devices")).devices||[];
+  const pins=devices.filter(d=>d.type==="occupancy").map(d=>d.ep);
+
+  /* Unchanged from what every board gets by default - see defHome() in the
+   * real panel. The wizard does not touch this section at all. */
+  const statusSec={n:"Status",w:[
+    {t:"clock",i:uid(),x:0,y:0,w:3,h:2},
+    {t:"weather",i:uid(),x:3,y:0,w:3,h:2},
+    {t:"custom",i:uid(),x:6,y:0,w:3,h:2},
+    {t:"bridge",i:uid(),x:9,y:0,w:3,h:2}]};
+
+  /* Pinned devices: the vibration sensor always, plus - only when a location
+   * was actually given - four sensor-style cards fed by it: temperature
+   * (the same "weather" widget the Status section uses, just pointed at the
+   * real coordinates instead of the generic default), humidity, rain and
+   * air quality. All four read from Open-Meteo; three of them have no
+   * dedicated widget type, so they are "custom" blocks pointed at the right
+   * field, same mechanism the Settings screen exposes for anyone binding a
+   * device to an external API. */
+  const pinnedW=[{t:"devices",m:"pin",i:uid(),x:0,y:0,w:12,h:4}];
+  if(wiz.lat&&wiz.lon){
+    pinnedW.push(
+      {t:"weather",i:uid(),x:0,y:4,w:3,h:2,la:wiz.lat,lo:wiz.lon},
+      {t:"custom",i:uid(),x:3,y:4,w:3,h:2,n:"Humidity",
+       u:`https://api.open-meteo.com/v1/forecast?latitude=${wiz.lat}&longitude=${wiz.lon}&current=relative_humidity_2m`,
+       rf:"json",p:"current.relative_humidity_2m",k:"num",dc:0,sf:"%"},
+      {t:"custom",i:uid(),x:6,y:4,w:3,h:2,n:"Rain",
+       u:`https://api.open-meteo.com/v1/forecast?latitude=${wiz.lat}&longitude=${wiz.lon}&current=rain`,
+       rf:"json",p:"current.rain",k:"num",dc:1,sf:"mm"},
+      {t:"custom",i:uid(),x:9,y:4,w:3,h:2,n:"Air quality",
+       u:`https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${wiz.lat}&longitude=${wiz.lon}&current=us_aqi`,
+       rf:"json",p:"current.us_aqi",k:"num",dc:0});
+  }
+  const pinnedSec={n:"Pinned devices",w:pinnedW};
+  const pairingSec={n:"Pairing",w:[{t:"pairing",i:uid(),x:0,y:0,w:6,h:4}]};
+
+  const ui={tz:wiz.tz,tzOffset:wiz.tzOffset,lat:wiz.lat||undefined,lon:wiz.lon||undefined,
+            pins,home:[statusSec,pinnedSec,pairingSec]};
+  /* Not api() - that helper sends application/x-www-form-urlencoded, which is
+   * right for every other call in this file but wrong for a raw JSON body: the
+   * board's WebServer library tries to parse it as key=value pairs, finds
+   * none, and handleUiPost() ends up with nothing to save. text/plain is what
+   * the real panel's own saveUi() sends for exactly this endpoint - matched
+   * here so this call actually lands instead of failing silently while still
+   * navigating on as if it had (which is also why finishSetup() used to leave
+   * the wizard un-clearable: handleUiPost() only clears the wizard's pending
+   * marker when the save actually succeeds, see web_ui.cpp). */
+  let ok=false;
+  try{
+    const r=await(await fetch("/api/ui",{method:"POST",
+      headers:{"Content-Type":"text/plain"},body:JSON.stringify(ui)})).json();
+    ok=!!(r&&r.ok);
+  }catch(e){}
+  if(!ok){
+    msg(t("saveFail"),"err");
+    return;
+  }
+  location.href="/";
+}
+
+/* -------------------------------------------------------------- flow */
+const STEPS=[stepUsers,stepTz,stepLocation,stepWifi,stepFinish];
+
+/* Step 1 is the mandatory one - an admin account is what the rest of this
+ * board's security depends on, so the forward button stays disabled rather
+ * than clickable-then-refused until the fields could actually pass. Once
+ * the account exists (saveUsers() already ran once) there is nothing left
+ * to withhold it for, even if the visitor comes back to this step to add
+ * one more person. */
+function updateFwdState(){
+  const b=$("fwdBtn");
+  if(!b||step!==1)return;
+  if(usersCreated){b.disabled=false;return;}
+  const name=$("uName").value.trim(), pass=$("uPass").value, pass2=$("uPass2").value;
+  b.disabled=!(name.length>=2&&pass.length>=8&&pass===pass2);
+}
+
+function render(){
+  document.title=t("title");
+  $("h1").textContent=t("title");
+  $("steps").innerHTML=Array.from({length:TOTAL},(_,i)=>
+    `<i class="${i+1<step?"done":i+1===step?"on":""}"></i>`).join("");
+  $("body").innerHTML=STEPS[step-1]();
+  msg("");
+  if(step===1)paintExtra();
+  if(step===2)paintTzPreview();
+  if(step===3)paintLoc();
+  if(step===4){paintWifiNow();loadSavedNets();renderNets([]);}
+
+  const nav=document.createElement("div");
+  nav.className="btns";
+  if(step>1){
+    const back=document.createElement("button");
+    back.className="ghost"; back.textContent=t("bBack"); back.onclick=()=>{step--;render();};
+    nav.appendChild(back);
+  }
+  const fwd=document.createElement("button");
+  fwd.id="fwdBtn";
+  fwd.textContent=step===TOTAL?t("bFinish"):t("bNext");
+  fwd.onclick=async()=>{
+    if(step===1){
+      fwd.disabled=true;
+      const err=await saveUsers();
+      fwd.disabled=false;
+      if(err){msg("⚠ "+err,"err");return;}
+    }
+    if(step===TOTAL){
+      /* finishSetup() awaits a device list, then a save, on a board that is
+       * also answering a scan or a bind test for someone else - a few
+       * seconds with nothing on screen reads as hung, not busy. */
+      fwd.disabled=true;
+      const label=fwd.textContent;
+      fwd.textContent=t("bSaving");
+      await finishSetup();
+      fwd.disabled=false;
+      fwd.textContent=label;
+      return;
+    }
+    step++; render();
+  };
+  nav.appendChild(fwd);
+  $("body").appendChild(nav);
+  updateFwdState();
+}
+
+/* A reload mid-setup re-runs this whole script from scratch, and the wizard
+ * is now kept on screen for exactly that case (the board's own note on it:
+ * setup stays pending until finishSetup() saves). Without this check, step 1
+ * would try to create the admin a second time with the same name and fail -
+ * the tab already holds a valid session from the first attempt, so ask
+ * before assuming there isn't one. */
+(async()=>{
+  const s=await api("/api/session");
+  if(s&&s.name){usersCreated=true;wiz.adminName=s.name;}
+  render();
+})();
+</script>

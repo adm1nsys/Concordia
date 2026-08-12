@@ -1,0 +1,134 @@
+#
+# Copyright (c) 2023 Nordic Semiconductor ASA
+#
+# SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
+#
+
+#### Radio core selection
+config NRF_DEFAULT_IPC_RADIO
+	default y
+
+# Enable IEEE802.15.4 serialization to network core
+# This config automatically pulls in the `overlay-802154.conf` in the ipc_radio image
+config NETCORE_IPC_RADIO_IEEE802154
+	default y if SOC_SERIES_NRF53 && !WIFI_NRF70
+
+# Enable Bluetooth serialization to network core
+# This config automatically pulls in the `overlay-bt_hci_ipc.conf` in the ipc_radio image
+config NETCORE_IPC_RADIO_BT_HCI_IPC
+	default y if SOC_SERIES_NRF53
+
+#### Bootloader
+#
+# No MCUboot on the XIAO. The board has no external flash, so the secondary
+# slot would have to come out of the same internal RRAM as the application, and
+# DFU through it is not something this board can usefully do anyway. Left
+# enabled it does not merely waste space: MCUboot itself halts in
+# arch_system_halt before ever reaching the application. Building without a
+# bootloader links the app at 0x0 and hands it the whole RRAM - which is what
+# the previous working firmware did too.
+choice BOOTLOADER
+	default BOOTLOADER_NONE if BOARD_XIAO_NRF54L15
+	default BOOTLOADER_MCUBOOT if !BOARD_NRF21540DK
+endchoice
+
+# Matter OTA goes with it. Sysbuild pushes CONFIG_CHIP_OTA_REQUESTOR into the
+# application image (nrf/sysbuild/CMakeLists.txt), so setting it in a board
+# fragment is useless - the value arrives via .config.sysbuild and wins. Without
+# MCUboot the requestor fails to link on `dfu_target_mcuboot_set_buf`.
+config MATTER_OTA
+	default n if BOARD_XIAO_NRF54L15
+
+if BOOTLOADER_MCUBOOT
+
+#### DFU multi-image support
+config DFU_MULTI_IMAGE_PACKAGE_BUILD
+	default y
+
+config DFU_MULTI_IMAGE_PACKAGE_APP
+	default y
+
+#### DFU network core configuration
+if SOC_SERIES_NRF53
+
+choice MCUBOOT_MODE
+	default MCUBOOT_MODE_OVERWRITE_ONLY
+endchoice
+
+choice BOOT_SIGNATURE_TYPE
+	default BOOT_SIGNATURE_TYPE_RSA
+endchoice
+
+config SECURE_BOOT_NETCORE
+	default y
+
+config NETCORE_APP_UPDATE
+	default y
+
+config DFU_MULTI_IMAGE_PACKAGE_NET
+	default y
+
+endif # SOC_SERIES_NRF53
+
+endif # BOOTLOADER_MCUBOOT
+
+#### Enable generating factory data
+#
+# The XIAO has no factory_data partition to write into - no external flash, and
+# its layout does not carve one out - so the generator aborts during sysbuild
+# configuration with "required nodelabel not found: factory_data_partition".
+# The board falls back to the development certificates compiled into the
+# firmware, which is what CONFIG_CHIP_FACTORY_DATA=n selects application-side.
+config MATTER_FACTORY_DATA_GENERATE
+	default y if !BOARD_NRF21540DK && !BOARD_XIAO_NRF54L15
+
+# Internal flash only for nRF54L15 tag with compression
+if BOARD_NRF54L15TAG
+
+choice MCUBOOT_MODE
+	default MCUBOOT_MODE_OVERWRITE_ONLY
+endchoice
+
+config MCUBOOT_COMPRESSED_IMAGE_SUPPORT
+	default y
+
+endif
+
+# Partition Manager backwards compatibility
+if PARTITION_MANAGER
+
+if SOC_NRF54L10
+
+config PM_MCUBOOT_PAD
+	default 0x1000
+
+endif # SOC_NRF54L10
+
+if BOARD_NRF54L15TAG
+
+config PM_OVERRIDE_EXTERNAL_DRIVER_CHECK
+	default y
+
+config PM_EXTERNAL_FLASH_MCUBOOT_SECONDARY
+	default y
+
+endif # BOARD_NRF54L15TAG
+
+if BOARD_NRF54L15DK || BOARD_NRF54LM20DK
+
+# Disable checking the external drivers for nRF54L15 and nRF54LM20 DKs.
+config PM_OVERRIDE_EXTERNAL_DRIVER_CHECK
+	default y
+
+endif # BOARD_NRF54L15DK || BOARD_NRF54LM20DK
+
+if BOOTLOADER_MCUBOOT
+
+config PM_EXTERNAL_FLASH_MCUBOOT_SECONDARY
+	default y
+
+endif # BOOTLOADER_MCUBOOT
+
+endif # PARTITION_MANAGER
+
+source "share/sysbuild/Kconfig"

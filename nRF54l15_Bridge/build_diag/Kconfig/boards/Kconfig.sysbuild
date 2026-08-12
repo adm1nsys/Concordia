@@ -1,0 +1,2 @@
+# Load Sysbuild board Kconfig descriptions.
+osource "/opt/nordic/ncs/v3.4.0/zephyr/boards/seeed/xiao_nrf54l15/Kconfig.sysbuild"

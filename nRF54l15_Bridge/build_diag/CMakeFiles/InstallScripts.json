@@ -1,0 +1,15 @@
+{
+	"InstallScripts" : 
+	[
+		"/Users/romanenko/Cancordia/nRF54l15_Bridge/build_diag/cmake_install.cmake",
+		"/Users/romanenko/Cancordia/nRF54l15_Bridge/build_diag/_sysbuild/cmake_install.cmake",
+		"/Users/romanenko/Cancordia/nRF54l15_Bridge/build_diag/_sysbuild/sysbuild/images/cmake_install.cmake",
+		"/Users/romanenko/Cancordia/nRF54l15_Bridge/build_diag/_sysbuild/sysbuild/images/bootloader/cmake_install.cmake",
+		"/Users/romanenko/Cancordia/nRF54l15_Bridge/build_diag/_sysbuild/sysbuild/images/firmware_loader/cmake_install.cmake",
+		"/Users/romanenko/Cancordia/nRF54l15_Bridge/build_diag/modules/nrf/cmake_install.cmake",
+		"/Users/romanenko/Cancordia/nRF54l15_Bridge/build_diag/modules/mcuboot/cmake_install.cmake",
+		"/Users/romanenko/Cancordia/nRF54l15_Bridge/build_diag/_sysbuild/sysbuild/images/boards/cmake_install.cmake",
+		"/Users/romanenko/Cancordia/nRF54l15_Bridge/build_diag/_sysbuild/sysbuild/images/soc/cmake_install.cmake"
+	],
+	"Parallel" : false
+}

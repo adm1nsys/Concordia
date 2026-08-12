@@ -1,0 +1,43 @@
+{
+	"sources" : 
+	[
+		{
+			"file" : "/Users/romanenko/Cancordia/nRF54l15_Bridge/build_diag/_sysbuild/sysbuild/images/CMakeFiles/nRF54l15_Bridge"
+		},
+		{
+			"file" : "/Users/romanenko/Cancordia/nRF54l15_Bridge/build_diag/_sysbuild/sysbuild/images/CMakeFiles/nRF54l15_Bridge.rule"
+		},
+		{
+			"file" : "/Users/romanenko/Cancordia/nRF54l15_Bridge/build_diag/_sysbuild/sysbuild/images/CMakeFiles/nRF54l15_Bridge-complete.rule"
+		},
+		{
+			"file" : "/Users/romanenko/Cancordia/nRF54l15_Bridge/build_diag/_sysbuild/sysbuild/images/nRF54l15_Bridge-prefix/src/nRF54l15_Bridge-stamp/nRF54l15_Bridge-build.rule"
+		},
+		{
+			"file" : "/Users/romanenko/Cancordia/nRF54l15_Bridge/build_diag/_sysbuild/sysbuild/images/nRF54l15_Bridge-prefix/src/nRF54l15_Bridge-stamp/nRF54l15_Bridge-configure.rule"
+		},
+		{
+			"file" : "/Users/romanenko/Cancordia/nRF54l15_Bridge/build_diag/_sysbuild/sysbuild/images/nRF54l15_Bridge-prefix/src/nRF54l15_Bridge-stamp/nRF54l15_Bridge-download.rule"
+		},
+		{
+			"file" : "/Users/romanenko/Cancordia/nRF54l15_Bridge/build_diag/_sysbuild/sysbuild/images/nRF54l15_Bridge-prefix/src/nRF54l15_Bridge-stamp/nRF54l15_Bridge-install.rule"
+		},
+		{
+			"file" : "/Users/romanenko/Cancordia/nRF54l15_Bridge/build_diag/_sysbuild/sysbuild/images/nRF54l15_Bridge-prefix/src/nRF54l15_Bridge-stamp/nRF54l15_Bridge-mkdir.rule"
+		},
+		{
+			"file" : "/Users/romanenko/Cancordia/nRF54l15_Bridge/build_diag/_sysbuild/sysbuild/images/nRF54l15_Bridge-prefix/src/nRF54l15_Bridge-stamp/nRF54l15_Bridge-patch.rule"
+		},
+		{
+			"file" : "/Users/romanenko/Cancordia/nRF54l15_Bridge/build_diag/_sysbuild/sysbuild/images/nRF54l15_Bridge-prefix/src/nRF54l15_Bridge-stamp/nRF54l15_Bridge-update.rule"
+		}
+	],
+	"target" : 
+	{
+		"labels" : 
+		[
+			"nRF54l15_Bridge"
+		],
+		"name" : "nRF54l15_Bridge"
+	}
+}

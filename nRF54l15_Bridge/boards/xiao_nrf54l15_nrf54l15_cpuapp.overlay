@@ -1,0 +1,82 @@
+/*
+ * Seeed XIAO nRF54L15 (Sense).
+ *
+ * Picked up automatically by filename - deliberately, rather than as an extra
+ * overlay passed on the command line. In the previous project the equivalent
+ * settings lived in a fragment that had to be listed by hand, and a rebuild
+ * that quietly omitted it produced a firmware whose endpoint limit had
+ * collapsed from 100 to 8. Anything the board cannot work without belongs here.
+ *
+ * Note what is NOT here: the FLPR memory reclaim the 3.2.3 project carried
+ * (&cpuapp_rram / &cpuapp_sram resized by hand). On NCS 3.4 the board already
+ * reports the full 1524 KB RRAM and 256 KB SRAM without it. Adding it back
+ * would be redrawing memory boundaries next to a radio that owns part of that
+ * memory - which is what the old crashes looked like.
+ */
+
+/ {
+	chosen {
+		/*
+		 * The interactive shell moves to the header pins so the ESP32-C6
+		 * companion can drive `bridge ...` commands. The console stays on
+		 * uart20 (USB) so logs remain separate from command output - a
+		 * parser on the other end should never have to tell them apart.
+		 *
+		 *   uart20 -> P1.09 TX / P1.08 RX, wired to the on-board CMSIS-DAP
+		 *   uart21 -> P2.08 TX / P2.07 RX, on the pin header
+		 *
+		 * Wiring (both boards are 3V3, common ground is mandatory):
+		 *   nRF P2.08 --> ESP D3 (GPIO21, RX)
+		 *   nRF P2.07 <-- ESP D2 (GPIO2,  TX)
+		 *   nRF GND    -- ESP GND
+		 */
+		zephyr,shell-uart = &uart21;
+	};
+};
+
+&uart21 {
+	status = "okay";
+	current-speed = <115200>;
+};
+
+/*
+ * Give the IMU rail time to settle before the driver talks to it.
+ *
+ * The board file allows 5 ms. That is not enough for the LSM6DS3TR-C: the
+ * driver's init does a software reboot of the chip over I2C and it was failing
+ * with "failed to reboot device", so device_is_ready() stayed false and the
+ * vibration endpoint was never created.
+ *
+ * It is a timing problem, not a wiring one - an `i2c scan` from the shell on a
+ * board that has been up a while finds the part answering perfectly well at
+ * 0x6a. The rail is confirmed on too: P0.01 reads back as a driven high.
+ */
+&pdm_imu_pwr {
+	startup-delay-us = <50000>;
+};
+
+/*
+ * Initialise the IMU from the application, not from the boot sequence.
+ *
+ * Even with the longer rail delay the driver's automatic init still failed, and
+ * once it has failed device_is_ready() stays false forever - it reports the
+ * result of that one attempt, it does not re-probe. Deferring means the boot
+ * sequence leaves the part alone and the bridge calls device_init() itself,
+ * seconds later, with the rail long settled. Seeed's own zephyr-imu example
+ * uses exactly this shape for the board that needs its PMIC brought up first.
+ */
+&lsm6ds3tr_c {
+	zephyr,deferred-init;
+};
+
+/* Watchdog for CONFIG_NCS_SAMPLE_MATTER_WATCHDOG: the sample code takes it
+ * from the watchdog0 alias, and the board files do not define one. */
+&wdt31 {
+	status = "okay";
+};
+
+/ {
+	aliases {
+		watchdog0 = &wdt31;
+	};
+};

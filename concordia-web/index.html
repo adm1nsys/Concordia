@@ -1,0 +1,3116 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Concordia</title>
+<style>
+:root{
+  --bg:#f2f3f6; --panel:#fff; --panel2:#f8f9fb; --ink:#16181d; --muted:#6b7280;
+  --line:#e4e7ec; --accent:#4a6cf7; --accent2:#7b4df6; --ok:#12a150; --warn:#c9721a;
+  --bad:#d13438; --r:16px; --shadow:0 1px 2px rgba(16,24,40,.05),0 4px 14px rgba(16,24,40,.06);
+  /* Header. No background of its own - the page shows through, so every element
+     is its own pane of glass and the diagonal hairline is what draws it. */
+  --el:rgba(255,255,255,.55); --elHi:rgba(16,24,40,.10); --elBad:rgba(209,52,56,.15);
+  --elShadow:0 1px 3px rgba(16,24,40,.07);
+  --elLine:linear-gradient(45deg,#fff,rgba(16,24,40,.16) 50%,#fff);
+  --thumb:rgba(255,255,255,.92); --thumbInk:var(--accent);
+}
+:root[data-theme="dark"], :root[data-theme="auto"].dark{
+  --bg:#0d0f14; --panel:#171a21; --panel2:#1d212a; --ink:#e9ebf0; --muted:#98a0ad;
+  --line:#272c36; --accent:#6d8bff; --accent2:#9b6dff;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 6px 18px rgba(0,0,0,.32);
+  --el:rgba(255,255,255,.07); --elHi:rgba(255,255,255,.14); --elBad:rgba(255,86,86,.20);
+  --elShadow:0 1px 3px rgba(0,0,0,.25);
+  --elLine:linear-gradient(45deg,rgba(255,255,255,.62),rgba(255,255,255,.03) 50%,rgba(255,255,255,.62));
+  --thumb:rgba(255,255,255,.13); --thumbInk:#fff;
+}
+/* The palette tints the neutrals as well as the accents, so choosing a colour
+   recolours the whole panel rather than just the buttons. Browsers without
+   color-mix simply keep the plain greys declared above. */
+@supports (color:color-mix(in srgb,red 50%,blue)){
+  :root{--bg:color-mix(in srgb,var(--accent) 5%,#f2f3f6);
+        --panel:color-mix(in srgb,var(--accent) 2%,#fff);
+        --panel2:color-mix(in srgb,var(--accent) 6%,#f8f9fb);
+        --line:color-mix(in srgb,var(--accent) 11%,#e4e7ec)}
+  :root[data-theme="dark"], :root[data-theme="auto"].dark{
+        --bg:color-mix(in srgb,var(--accent) 6%,#0d0f14);
+        --panel:color-mix(in srgb,var(--accent) 7%,#171a21);
+        --panel2:color-mix(in srgb,var(--accent) 9%,#1d212a);
+        --line:color-mix(in srgb,var(--accent) 14%,#272c36)}
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);-webkit-font-smoothing:antialiased;
+     font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Inter,sans-serif}
+a{color:var(--accent)}
+
+/* ------------------------------------------------------------------ shell */
+header{padding:13px 16px;position:sticky;top:0;z-index:30}
+.hrow{display:flex;align-items:center;gap:10px;flex-wrap:wrap;max-width:1120px;margin:0 auto}
+.hstat,.hact{display:flex;align-items:center;gap:10px;flex-wrap:wrap;min-width:0}
+.spacer{flex:1}
+.tabsrow{margin-top:11px;justify-content:center}
+
+/* One shape for everything in the header: a translucent pane, fully round, and a
+   hairline that runs white -> transparent -> white across the 45 degree diagonal.
+   The fill is see-through, so the hairline has to be masked down to the ring or
+   it would show through the middle of the element. */
+.glass{position:relative;border-radius:999px;background:var(--el);box-shadow:var(--elShadow);
+       -webkit-backdrop-filter:blur(7px);backdrop-filter:blur(7px)}
+.glass::before{content:"";position:absolute;inset:0;border-radius:inherit;padding:1px;
+       background:var(--elLine);pointer-events:none;
+       -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
+       -webkit-mask-composite:xor;
+       mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
+       mask-composite:exclude}
+
+.hpill{display:inline-flex;align-items:center;gap:7px;height:38px;padding:0 13px;border:0;
+       font-size:13px;white-space:nowrap;color:inherit}
+.hpill .lbl{opacity:.65}
+.hpill b{font-weight:620;font-variant-numeric:tabular-nums}
+.brand{height:38px;padding:0 15px;border:0;color:inherit;font:inherit;font-size:18px;
+       font-weight:680;letter-spacing:.2px;cursor:pointer;transition:background .15s}
+.brand:hover{background:var(--elHi)}
+.dot{width:8px;height:8px;border-radius:50%;background:#9aa1ab;flex:0 0 auto}
+.dot.on{background:#41d17f}.dot.off{background:#ff6b6b}.dot.warn{background:#f0a93c}
+.i14{width:15px;height:15px;flex:0 0 auto;opacity:.7}
+svg.i14,.ib svg{fill:none;stroke:currentColor;stroke-width:1.8;
+                stroke-linecap:round;stroke-linejoin:round}
+
+/* Action group: the pane holds them, each button is its own round hit area. */
+.acts{padding:0 4px;gap:2px}
+.ib{width:30px;height:30px;border-radius:50%;border:0;padding:0;background:transparent;
+    color:inherit;cursor:pointer;display:grid;place-items:center;
+    transition:background .15s,color .15s}
+.ib svg{width:18px;height:18px}
+.ib:hover,.ib:focus-visible{background:var(--elHi);outline:0}
+.ib.dgr:hover,.ib.dgr:focus-visible{background:var(--elBad);color:var(--bad)}
+.ib.on{background:var(--accent);color:#fff}
+.ib.on:hover{background:var(--accent)}
+
+/* A select cannot carry a ::before, so the glass is a wrapper around a bare one.
+   The chevron is the wrapper's ::after and follows the text colour. */
+.selw{padding-right:27px}
+.selw::after{content:"";position:absolute;right:12px;top:50%;margin-top:-5px;width:6px;height:6px;
+       border-right:1.7px solid currentColor;border-bottom:1.7px solid currentColor;
+       transform:rotate(45deg);opacity:.55;pointer-events:none}
+.selw select{width:auto;height:100%;padding:0;border:0;background:transparent;color:inherit;
+       font:inherit;font-size:13px;font-weight:560;cursor:pointer;
+       appearance:none;-webkit-appearance:none}
+.selw select:focus{outline:0}
+.selw option{color:#16181d;background:#fff}
+
+/* Tab bar: one pane, one sliding thumb. Nothing moves but the thumb. The scroller
+   is inside the pane, so the hairline stays put when the tabs are scrolled. */
+.tabsbox{max-width:100%;overflow:hidden}
+.tabs{position:relative;display:flex;gap:2px;padding:4px;overflow-x:auto;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tabs button{position:relative;z-index:1;border:0;background:transparent;color:var(--ink);
+             opacity:.6;cursor:pointer;font:inherit;font-size:14px;font-weight:560;
+             padding:8px 18px;border-radius:999px;white-space:nowrap;
+             transition:color .25s,opacity .25s}
+.tabs button:hover{opacity:.85}
+.tabs button.sel{opacity:1;color:var(--thumbInk)}
+.thumb{position:absolute;top:4px;bottom:4px;left:0;width:0;border-radius:999px;
+       background:var(--thumb);box-shadow:0 1px 4px rgba(16,24,40,.14)}
+.thumb.anim{transition:transform .34s cubic-bezier(.32,.72,.24,1),
+                       width .34s cubic-bezier(.32,.72,.24,1)}
+
+/* Below the width where all of it fits on one line, break it where it means
+   something: identity and actions on top, the three read-outs on a row of their
+   own. That row never wraps - the SSID gives up its width first, because it is
+   the one value that can be shortened and still be recognised. */
+@media (max-width:900px){
+  .spacer{display:none}
+  .brand{order:1}
+  .hact{order:2;margin-left:auto}
+  .hstat{order:3;flex-basis:100%;flex-wrap:nowrap}
+  .pnet{flex:1 1 auto;min-width:0}
+  .pnet b{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis}
+}
+@media (max-width:680px){
+  header{padding:10px 12px}
+  .hrow,.hstat,.hact{gap:7px}
+  .brand{height:34px;padding:0 12px;font-size:17px}
+  .hpill{height:34px;padding:0 11px;font-size:12.5px;gap:6px}
+  .selw{padding-right:25px}
+  .acts{padding:0 3px}
+  .ib{width:28px;height:28px}
+  .ib svg{width:17px;height:17px}
+  .tabsrow{margin-top:9px}
+  .tabs button{padding:8px 15px}
+}
+@media (max-width:400px){
+  .brand{font-size:16px;padding:0 11px}
+  .hpill{padding:0 9px}
+  .selw{padding-right:23px}  /* the rule above would otherwise put the chevron on the text */
+  .ib{width:26px;height:26px}
+}
+main{max-width:1120px;margin:0 auto;padding:22px 16px 70px}
+section{display:none}section.sel{display:block}
+h2{font-size:15px;font-weight:660;margin:26px 0 12px;color:var(--muted);
+   text-transform:uppercase;letter-spacing:.6px}
+h2:first-child{margin-top:0}
+
+/* ------------------------------------------------------------------ parts */
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);
+      box-shadow:var(--shadow);padding:16px}
+.grid{display:grid;gap:13px;grid-template-columns:repeat(auto-fill,minmax(178px,1fr))}
+.wgrid{display:grid;gap:13px;grid-template-columns:repeat(auto-fit,minmax(230px,1fr))}
+label{display:block;font-size:12px;color:var(--muted);margin:12px 0 5px;font-weight:520}
+input,select,textarea{width:100%;padding:10px 11px;border:1px solid var(--line);
+       border-radius:10px;background:var(--panel2);color:var(--ink);font:inherit;font-size:14px}
+input:focus,select:focus{outline:2px solid var(--accent);outline-offset:-1px}
+/* The generic input padding turns a colour well into a hairline. */
+input[type=color]{padding:3px;height:42px;cursor:pointer}
+.row{display:flex;gap:10px}.row>*{flex:1}
+.btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}
+/* All three share one shape. They used to be written as modifiers on .act, so a
+   button carrying only .ghost or only .danger - Copy, Remove, the console
+   shortcuts - fell back to the browser's default and looked unfinished. The
+   transparent border keeps every variant the same height. */
+button.act,button.ghost,button.danger{
+  border:1px solid transparent;border-radius:10px;padding:9px 15px;cursor:pointer;
+  font:inherit;font-weight:620;font-size:14px;background:var(--accent);color:#fff;
+  transition:background .15s,filter .15s}
+button.ghost{background:var(--panel2);border-color:var(--line);color:var(--ink);font-weight:560}
+button.danger{background:var(--bad);color:#fff}
+button.act:hover,button.danger:hover{filter:brightness(1.09)}
+button.ghost:hover{background:var(--line)}
+button.act:active,button.ghost:active,button.danger:active{transform:translateY(1px)}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+pre.out{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);
+        padding:14px;white-space:pre-wrap;word-break:break-word;font-size:12.5px;
+        max-height:460px;overflow:auto;margin:0;
+        font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+.note{color:var(--muted);font-size:12.5px}
+.wrow{padding:7px 9px;margin-bottom:6px;border-radius:7px;
+  border-left:3px solid var(--mut);background:rgba(127,127,127,.08);font-size:.9em}
+.wrow.warn{border-left-color:#d9a406}
+.wrow.error{border-left-color:#d94f4f}
+.wrow.info{border-left-color:#4f8bd9}
+.wrow .note{margin-top:2px}
+.empty{color:var(--muted);text-align:center;padding:36px 10px}
+
+/* -------------------------------------------------------------- dashboard */
+/* One grid per section. Blocks are placed by cell, not by flow, so a block can
+   sit anywhere and be any size. --cols is set by JS and changes with the width;
+   --gap and --row have to match the constants the drag maths uses. */
+.sec{margin-bottom:24px}
+.sechead{display:flex;align-items:center;gap:8px;margin:0 0 12px;min-height:32px}
+.sechead h2{margin:0}
+.sechead input{width:auto;flex:1;max-width:300px;padding:7px 11px;font-size:13.5px;margin:0}
+.sbtn{border:1px solid var(--line);background:var(--panel);color:var(--muted);border-radius:9px;
+      width:32px;height:32px;display:grid;place-items:center;cursor:pointer;padding:0;flex:0 0 auto}
+.sbtn:hover{color:var(--ink);border-color:var(--accent)}
+.sbtn.wide{width:auto;padding:0 13px;gap:7px;grid-auto-flow:column;font:inherit;font-size:13px}
+.sbtn svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.8;
+          stroke-linecap:round;stroke-linejoin:round}
+
+.wgrid{position:relative;display:grid;gap:var(--gap);
+       grid-template-columns:repeat(var(--cols),1fr);grid-auto-rows:var(--row)}
+.w{position:relative;background:var(--panel);border:1px solid var(--line);border-radius:var(--r);
+   box-shadow:var(--shadow);padding:14px;overflow:hidden;display:flex;flex-direction:column;
+   min-width:0;transition:transform .18s ease}
+.w.scr{overflow:auto}
+.wlab{color:var(--muted);font-size:12.5px}
+.wbig{font-size:30px;font-weight:700;line-height:1.15;margin-top:3px;
+      font-variant-numeric:tabular-nums;white-space:nowrap}
+.w.tiny .wbig{font-size:21px}
+.wsub{color:var(--muted);font-size:12.5px;margin-top:auto;padding-top:4px;
+      white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.w .grid{grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:10px}
+.w .tile{min-height:96px;padding:12px}
+.w .empty{padding:12px 6px}
+.wnote{white-space:pre-wrap;word-break:break-word;font-size:14px}
+/* a single-device block wears the tile's clothes without the extra frame */
+.w>.ico{font-size:23px;line-height:1}
+.w>.tname{font-weight:610;margin-top:5px;word-break:break-word}
+.w>.tsub{color:var(--muted);font-size:11.5px}
+.w>.tval{margin-top:auto;font-size:22px;font-weight:660;font-variant-numeric:tabular-nums}
+.w.act{cursor:pointer}
+.w.on{border-color:var(--accent);background:linear-gradient(160deg,var(--panel),rgba(74,108,247,.09))}
+
+/* Edit mode. Everything that can move gets a hand, a dashed edge and a corner. */
+.edit .w{cursor:grab;border-style:dashed;border-color:var(--accent);touch-action:none;
+         user-select:none;-webkit-user-select:none}
+.edit .w .tile,.edit .w input,.edit .w button{pointer-events:none}
+/* Out of the grid and under the pointer, with no transition to lag behind it. */
+.w.dragging{position:absolute;z-index:20;transition:none;cursor:grabbing;
+            box-shadow:0 14px 38px rgba(16,24,40,.32)}
+/* Where it will land. */
+.wph{border:2px dashed var(--accent);border-radius:var(--r);
+     background:rgba(74,108,247,.07);pointer-events:none}
+.wx,.wg{position:absolute;top:7px;width:24px;height:24px;border-radius:50%;border:0;
+    font-size:13px;line-height:1;cursor:pointer;z-index:3;display:none;place-items:center;padding:0}
+.wx{right:7px;background:var(--bad);color:#fff}
+.wg{right:37px;background:var(--accent);color:#fff}
+.wg svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.9;
+        stroke-linecap:round;stroke-linejoin:round}
+/* The child combinator is not decoration: `.edit .w button` above outranks a
+   plain `.edit .wx`, which left these two buttons dead in edit mode. */
+.edit .w>.wx,.edit .w>.wg{display:grid;pointer-events:auto}
+.wres{position:absolute;right:0;bottom:0;width:24px;height:24px;cursor:nwse-resize;
+      display:none;z-index:3}
+.edit .wres{display:block}
+.wres:after{content:"";position:absolute;right:6px;bottom:6px;width:9px;height:9px;
+      border-right:2px solid var(--accent);border-bottom:2px solid var(--accent)}
+.editbar{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
+/* An empty room still needs a target you can drop a device onto. */
+#tiles .droom{min-height:24px}
+#tiles .sec .droom:empty{min-height:74px;border:2px dashed var(--line);border-radius:var(--r)}
+@media (max-width:680px){
+  .sechead{flex-wrap:wrap}
+  .sechead input{max-width:none;flex:1 1 120px}
+}
+
+/* ------------------------------------------------------------------ tiles */
+.tile{position:relative;background:var(--panel);border:1px solid var(--line);
+      border-radius:var(--r);box-shadow:var(--shadow);padding:15px;min-height:112px;
+      display:flex;flex-direction:column;gap:3px;transition:transform .12s,border-color .12s}
+.tile.act{cursor:pointer}
+.tile.act:hover{transform:translateY(-2px);border-color:var(--accent)}
+.tile.on{border-color:var(--accent);background:linear-gradient(160deg,var(--panel),rgba(74,108,247,.09))}
+.tile .ico{font-size:23px;line-height:1}
+.tile .tname{font-weight:610;margin-top:5px;word-break:break-word}
+.tile .tsub{color:var(--muted);font-size:11.5px}
+.tile .tval{margin-top:auto;font-size:19px;font-weight:660;font-variant-numeric:tabular-nums}
+.tile .tval small{font-size:11px;color:var(--muted);font-weight:500}
+.gear{position:absolute;top:9px;right:9px;width:27px;height:27px;border-radius:8px;
+      border:0;background:var(--panel2);color:var(--muted);cursor:pointer;opacity:0;
+      transition:opacity .13s;font-size:13px;line-height:1}
+.tile:hover .gear,.gear:focus{opacity:1}
+.gear:hover{color:var(--ink);background:var(--line)}
+.tile.moving{opacity:.5;border-style:dashed}
+.badge{position:absolute;top:11px;right:42px;font-size:9.5px;letter-spacing:.5px;
+       color:var(--muted);border:1px solid var(--line);border-radius:5px;padding:1px 4px}
+
+/* ----------------------------------------------------------------- modals */
+.back{position:fixed;inset:0;background:rgba(10,12,18,.55);backdrop-filter:blur(3px);
+      display:none;align-items:center;justify-content:center;padding:16px;z-index:40}
+.back.open{display:flex}
+.modal{background:var(--panel);border-radius:20px;box-shadow:0 24px 64px rgba(0,0,0,.35);
+       width:100%;max-width:440px;max-height:88vh;overflow:auto;padding:20px}
+.modal h3{margin:0 0 4px;font-size:18px}
+.mhead{display:flex;align-items:flex-start;gap:10px;margin-bottom:6px}
+.mhead .x{margin-left:auto;border:0;background:transparent;color:var(--muted);
+          font-size:21px;cursor:pointer;line-height:1}
+
+/* --------------------------------------------------------------- controls */
+.sw{position:relative;display:inline-block;width:54px;height:31px;flex:0 0 auto}
+.sw input{opacity:0;width:0;height:0}
+.sl{position:absolute;inset:0;background:var(--line);border-radius:999px;cursor:pointer;transition:.18s}
+.sl:before{content:"";position:absolute;width:25px;height:25px;left:3px;top:3px;background:#fff;
+           border-radius:50%;transition:.18s;box-shadow:0 1px 3px rgba(0,0,0,.3)}
+.sw input:checked+.sl{background:var(--ok)}
+.sw input:checked+.sl:before{transform:translateX(23px)}
+.swrow{display:flex;align-items:center;gap:12px;margin-top:8px}
+.swrow b{font-weight:620}
+.vrow{display:flex;gap:11px;align-items:center;margin-top:8px}
+.vrow input[type=range]{flex:1;padding:0;border:0;background:none;accent-color:var(--accent)}
+.vrow input[type=number]{flex:0 0 92px;text-align:right}
+.unit{color:var(--muted);font-size:12.5px;flex:0 0 auto;min-width:34px}
+.seg{display:flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;margin-top:5px}
+.seg button{flex:1;border:0;background:var(--panel);color:var(--muted);padding:9px;cursor:pointer;
+            font:inherit;font-size:13.5px}
+.seg button.sel{background:var(--accent);color:#fff;font-weight:620}
+.chk{display:flex;align-items:center;gap:10px;margin:14px 0}
+.chk input{width:18px;height:18px;flex:0 0 auto}
+.chk span{font-size:14px}
+
+/* ------------------------------------------------------------------ table */
+table{width:100%;border-collapse:collapse;font-size:13.5px}
+th,td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--line)}
+th{color:var(--muted);font-weight:600;font-size:11.5px;text-transform:uppercase;letter-spacing:.5px}
+td.c,th.c{text-align:center;width:92px}
+tr.grp td{background:var(--panel2);font-weight:660;font-size:11.5px;
+          text-transform:uppercase;letter-spacing:.6px;color:var(--muted)}
+tr.mine td:first-child{font-weight:620}
+tr.mine td{background:color-mix(in srgb,var(--accent) 7%,transparent)}
+.yes{color:var(--ok);font-weight:700}.no{color:var(--muted)}
+.scroll{overflow-x:auto;border:1px solid var(--line);border-radius:var(--r);background:var(--panel)}
+.kv{display:flex;justify-content:space-between;gap:14px;padding:9px 0;border-bottom:1px solid var(--line)}
+.kv:last-child{border:0}
+.kv span:first-child{color:var(--muted)}
+.kv span:last-child{font-weight:560;text-align:right;word-break:break-all}
+.code{font-size:29px;font-weight:700;letter-spacing:2px;text-align:center;margin:10px 0 4px;
+      font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+
+/* -------------------------------------------------------------------- gate
+ * Replaces the whole app, not a modal over it: header and main are display:
+ * none while it is up, so nothing behind it renders, polls, or can be tabbed
+ * into. z-index above the modal backdrop (40) - the two can never be open at
+ * once in practice, but the gate wins if they ever were. */
+body.gated>header,body.gated>main{display:none}
+.gate{position:fixed;inset:0;z-index:100;background:var(--bg);display:none;
+      align-items:center;justify-content:center;padding:16px}
+.gate.open{display:flex}
+.gcard{width:100%;max-width:340px}
+.gbrand{font-size:21px;font-weight:680;text-align:center;margin-bottom:6px}
+
+/* --------------------------------------------------------------- avatars
+ * An <img> when one is on the card, a coloured initial when there is none -
+ * same box either way, so a row of users never jumps as pictures arrive. */
+.avatar{width:26px;height:26px;border-radius:50%;object-fit:cover;flex:0 0 auto;
+        background:var(--accent);color:#fff;display:inline-grid;place-items:center;
+        font-size:12px;font-weight:700;vertical-align:middle}
+.avatar.lg{width:60px;height:60px;font-size:24px}
+.urow{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line)}
+.urow:last-child{border:0}
+.urow .uinfo{flex:1;min-width:0}
+.urow .uinfo b{display:block}
+
+/* ---------------------------------------------------------------- toast
+ * Below the gate (100), above everything else that is ordinarily on screen -
+ * a refusal from cmd() has to be seen from any tab, any open modal. */
+#toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(10px);
+       max-width:min(86vw,420px);background:var(--panel);color:var(--ink);
+       border:1px solid var(--line);border-radius:12px;padding:11px 18px;
+       box-shadow:var(--shadow);font-size:13.5px;z-index:90;
+       opacity:0;pointer-events:none;transition:opacity .2s,transform .2s}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+</style>
+<style id="pal"></style>
+<script src="mock.js"></script> <!-- dev-only: stripped by pack.py -->
+</head>
+<body>
+
+<header>
+  <div class="hrow">
+    <button class="brand glass" id="brand" onclick="go('home')">Concordia</button>
+
+    <div class="hstat">
+      <span class="hpill glass">
+        <span class="dot" id="dotLink"></span><span class="lbl">Link</span><b id="linkTxt">—</b>
+      </span>
+
+      <span class="hpill glass pnet">
+        <svg class="i14" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M1.6 9.2a15 15 0 0 1 20.8 0"/><path d="M5 12.7a10 10 0 0 1 14 0"/>
+          <path d="M8.4 16.2a5 5 0 0 1 7.2 0"/><path d="M12 19.6h.01"/></svg>
+        <b id="netTxt">—</b>
+      </span>
+
+      <span class="hpill glass">
+        <svg class="i14" viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="12" cy="12" r="9.2"/><path d="M2.8 12h18.4"/>
+          <path d="M12 2.8a13.5 13.5 0 0 1 0 18.4a13.5 13.5 0 0 1 0-18.4"/></svg>
+        <b id="ipTxt" class="mono">—</b>
+      </span>
+    </div>
+
+    <span class="spacer"></span>
+
+    <div class="hact">
+    <!-- Hidden while no account exists at all - see users.h on the hub for why
+         that bootstrap window is deliberate. paintAccount() shows it, and fills
+         it with either "sign in" or the signed-in name plus a sign-out icon,
+         the moment status.users comes back true. -->
+    <span class="hpill glass acts" id="acctPill" style="display:none"></span>
+
+    <!-- Layout editing is a Home-only affordance: go() hides it everywhere else so
+         a stray tap on another tab cannot rearrange the dashboard. -->
+    <span class="hpill glass acts" id="editWrap" style="display:none">
+      <button class="ib" id="editBtn" data-ti="hEdit" onclick="setEdit(!editing)">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M4 20.5h4.2L19.4 9.3a2.1 2.1 0 0 0 0-3l-1.7-1.7a2.1 2.1 0 0 0-3 0L3.5 15.8v4.7z"/>
+          <path d="M13.6 6.3l4.1 4.1"/></svg></button>
+    </span>
+
+    <span class="hpill glass selw">
+      <select id="lang" aria-label="Language">
+        <option value="en">EN</option><option value="de">DE</option><option value="da">DA</option>
+      </select>
+    </span>
+
+    <span class="hpill glass acts">
+      <!-- reboot the node: the chip, inside a restart ring -->
+      <button class="ib" data-ti="bNodeReboot" onclick="ask('nrf reboot','cNodeReboot')">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M21 12a9 9 0 1 1-2.64-6.36L21 8"/><path d="M21 3v5h-5"/>
+          <rect x="9.4" y="9.4" width="5.2" height="5.2" rx="1.2"/></svg></button>
+
+      <!-- reboot the hub: the radio, inside the same ring -->
+      <button class="ib" data-ti="bHubReboot" onclick="ask('reboot','cHubReboot')">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M21 12a9 9 0 1 1-2.64-6.36L21 8"/><path d="M21 3v5h-5"/>
+          <path d="M9.2 12.4a4 4 0 0 1 5.6 0"/><path d="M10.7 14.4a2 2 0 0 1 2.6 0"/>
+          <path d="M12 16.4h.01"/></svg></button>
+
+      <!-- factory reset the node: the chip, struck through -->
+      <button class="ib dgr" data-ti="bNodeReset" onclick="ask('nrf reset','cNodeReset')">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <rect x="4.5" y="4.5" width="15" height="15" rx="3"/>
+          <path d="M9 1.6v2.9M15 1.6v2.9M9 19.5v2.9M15 19.5v2.9
+                   M1.6 9h2.9M1.6 15h2.9M19.5 9h2.9M19.5 15h2.9"/>
+          <path d="M9.6 9.6l4.8 4.8M14.4 9.6l-4.8 4.8"/></svg></button>
+
+      <!-- wipe everything -->
+      <button class="ib dgr" data-ti="bAll" onclick="ask('factoryreset confirm','cAll')">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M3.5 6.2h17"/>
+          <path d="M18.6 6.2v13a2 2 0 0 1-2 2H7.4a2 2 0 0 1-2-2v-13"/>
+          <path d="M9 6.2V4.4a1.8 1.8 0 0 1 1.8-1.8h2.4A1.8 1.8 0 0 1 15 4.4v1.8"/>
+          <path d="M10.2 10.6v6.2M13.8 10.6v6.2"/></svg></button>
+    </span>
+    </div>
+  </div>
+
+  <div class="hrow tabsrow">
+    <div class="tabsbox glass"><div class="tabs" id="tabs">
+      <span class="thumb" id="thumb"></span>
+      <button data-tab="home" class="sel" data-i18n="tHome">Home</button>
+      <button data-tab="devices" data-i18n="tDevices">Devices</button>
+      <button data-tab="console" data-i18n="tConsole">Console</button>
+      <button data-tab="settings" data-i18n="tSettings">Settings</button>
+      <button data-tab="info" data-i18n="tInfo">Info</button>
+    </div></div>
+  </div>
+</header>
+
+<main>
+
+<!-- ============================================================= HOME -->
+<section id="home" class="sel"><div id="homeWrap"></div></section>
+
+<!-- ========================================================== DEVICES -->
+<section id="devices">
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+    <h2 style="margin:0" data-i18n="tDevices">Devices</h2>
+    <span class="spacer" style="flex:1"></span>
+    <button class="ghost" id="orderBtn" onclick="toggleOrder()" data-i18n="bReorder">Reorder</button>
+    <button class="act" onclick="openAdd()">+</button>
+  </div>
+  <div id="tiles"></div>
+  <div class="empty" id="noDev" style="display:none" data-i18n="dNone">No devices yet.</div>
+</section>
+
+<!-- ========================================================== CONSOLE -->
+<section id="console">
+  <div class="btns" style="margin:0 0 12px">
+    <button class="ghost" onclick="run('status')">status</button>
+    <button class="ghost" onclick="run('list')">list</button>
+    <button class="ghost" onclick="run('bindings')">bindings</button>
+    <button class="ghost" onclick="run('nrf ot state')">ot state</button>
+    <button class="ghost" onclick="run('log')" data-i18n="bLog">Log</button>
+    <button class="ghost" onclick="run('log clear')" data-i18n="bLogClear">Clear log</button>
+  </div>
+  <div class="row">
+    <input id="cmdLine" class="mono" placeholder="help" onkeydown="if(event.key==='Enter')run()">
+    <button class="act" style="flex:0 0 auto" onclick="run()" data-i18n="bSend">Send</button>
+  </div>
+  <div style="height:12px"></div>
+  <pre class="out" id="out">—</pre>
+</section>
+
+<!-- ========================================================= SETTINGS -->
+<section id="settings">
+  <h2 data-i18n="sAppearance">Appearance</h2>
+  <div class="card">
+    <label data-i18n="sTheme">Theme</label>
+    <select id="setTheme" onchange="saveUi()">
+      <option value="auto" data-i18n="sAuto">Follow the system</option>
+      <option value="light" data-i18n="sLight">Light</option>
+      <option value="dark" data-i18n="sDark">Dark</option>
+    </select>
+    <label data-i18n="sPal">Colour</label>
+    <select id="setPal" onchange="saveUi()"></select>
+    <div id="palRow" class="row" style="display:none">
+      <div><label data-i18n="sC1">Main colour</label>
+        <input type="color" id="setC1" onchange="saveUi()"></div>
+      <div><label data-i18n="sC2">Second colour</label>
+        <input type="color" id="setC2" onchange="saveUi()"></div>
+    </div>
+    <div class="chk">
+      <input type="checkbox" id="setCluster" onchange="saveUi();render()">
+      <span data-i18n="sCluster">Show Matter device type, e.g. On/Off Light (0x0100)</span>
+    </div>
+  </div>
+
+  <!-- Admin-only: hidden for everyone else, and empty until loadUsers() has
+       something to show it. See users.h on the hub for the permission model. -->
+  <h2 data-i18n="sUsers" id="usersHead" style="display:none">Users</h2>
+  <div class="card" id="usersCard" style="display:none">
+    <div class="scroll"><table id="usersTable"><thead><tr>
+      <th data-i18n="name">Name</th><th data-i18n="uRole">Role</th>
+      <th data-i18n="uPerms">Permissions</th><th></th>
+    </tr></thead><tbody></tbody></table></div>
+    <div class="btns"><button class="act" onclick="openUserModal(0)" data-i18n="bAddUser">Add user</button></div>
+  </div>
+
+  <h2 data-i18n="sNetwork">Network</h2>
+  <div class="card">
+    <label data-i18n="sHostname">Hostname</label>
+    <input id="wHost" spellcheck="false" onchange="hostnameSave()">
+    <div class="note" id="wHostHint"></div>
+  </div>
+
+  <div class="card">
+    <div class="scroll"><table id="wifiTable"><tbody></tbody></table></div>
+    <div id="wifiNone" class="note" data-i18n="wNoneSaved" style="display:none">No saved networks yet.</div>
+
+    <div id="wifiEditHint" class="note" style="display:none;margin-top:10px"></div>
+    <div class="row">
+      <div><label data-i18n="sSsid">Network</label><input id="wSsid"></div>
+      <div><label data-i18n="sPass">Password</label><input id="wPass" type="password"></div>
+    </div>
+    <div class="btns">
+      <button class="act" onclick="wifiAdd()" data-i18n="bSave">Save</button>
+      <button class="ghost" id="wCancelEdit" onclick="wifiCancelEdit()" data-i18n="bClose" style="display:none">Close</button>
+      <button class="ghost" onclick="wifiScan()" data-i18n="bScan">Scan</button>
+      <button class="ghost" onclick="wifiReconnectNow()" data-i18n="bJoin">Reconnect</button>
+    </div>
+    <div id="wifiScanResults"></div>
+  </div>
+
+  <h2 data-i18n="sCard">Storage card</h2>
+  <div class="card">
+    <div id="sdInfo" class="note">—</div>
+    <label data-i18n="sToken">Access token</label>
+    <input id="sdTok" spellcheck="false" onchange="tokSave()">
+    <div class="note" data-i18n="sTokenHint"></div>
+
+    <div id="sdBrowser" style="display:none;margin-top:16px">
+      <div class="btns" style="margin:0 0 8px">
+        <button class="ghost" onclick="fsUp()" data-i18n="bUp">Up</button>
+        <button class="ghost" onclick="fsMkdir()" data-i18n="bNewFolder">New folder</button>
+        <button class="ghost" onclick="$('#fsFile').click()" data-i18n="bUpload">Upload</button>
+        <input type="file" id="fsFile" hidden onchange="fsUpload()">
+      </div>
+      <div id="fsPath" class="code" style="font-size:.82em;margin-bottom:6px"></div>
+      <div class="scroll"><table id="fsTable"><tbody></tbody></table></div>
+      <div id="fsMsg" class="note"></div>
+    </div>
+  </div>
+
+  <h2 data-i18n="sLogging">Logging</h2>
+  <div class="card">
+    <label data-i18n="sLogLevel">Detail</label>
+    <select id="logLevel" onchange="logSave()"></select>
+    <div class="note" data-i18n="sLogHint"></div>
+    <label data-i18n="sLogCats">Categories</label>
+    <div id="logCats" style="display:flex;flex-wrap:wrap;gap:2px 18px"></div>
+  </div>
+
+  <h2 data-i18n="sPower">Power</h2>
+  <div class="card">
+    <div class="btns" style="margin:0">
+      <button class="ghost" onclick="ask('nrf reboot','cNodeReboot')" data-i18n="bNodeReboot">Reboot node</button>
+      <button class="ghost" onclick="ask('reboot','cHubReboot')" data-i18n="bHubReboot">Reboot hub</button>
+      <button class="danger" onclick="ask('nrf reset','cNodeReset')" data-i18n="bNodeReset">Factory reset node</button>
+      <button class="danger" onclick="ask('factoryreset confirm','cAll')" data-i18n="bAll">Wipe everything</button>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================= INFO -->
+<section id="info">
+  <h2 data-i18n="iVersions">Versions</h2>
+  <div class="card" id="verBox"></div>
+
+  <h2 data-i18n="iMatrix">Matter device types and ecosystem support</h2>
+  <div class="note" style="margin-bottom:10px">
+    <b id="mxCount">—</b> <span data-i18n="iMatrixNote"></span><br>
+    <span data-i18n="iHint"></span></div>
+  <div class="scroll">
+    <table id="matrix"><thead><tr>
+      <th data-i18n="iType">Type</th><th data-i18n="iId">Device type</th>
+      <th class="c" data-i18n="iBridge">This bridge</th>
+      <th class="c">HomeKit</th><th class="c">Google Home</th><th class="c">SmartThings</th>
+    </tr></thead><tbody></tbody></table>
+  </div>
+</section>
+</main>
+
+<!-- ============================================================ MODALS -->
+<div class="back" id="mBack" onclick="if(event.target===this)closeModal()">
+  <div class="modal" id="mBox"></div>
+</div>
+
+<!-- ============================================================== GATE
+     Not a modal - see the CSS above. Shown instead of the whole app, from
+     boot(), for as long as accounts exist and this browser is not signed
+     into one. No outside-click or Escape dismisses it, on purpose. -->
+<div class="gate" id="gate">
+  <div class="card gcard">
+    <div class="gbrand" id="gBrand">Concordia</div>
+    <label data-i18n="name">Name</label>
+    <input id="gName" autocomplete="username">
+    <label data-i18n="sPass">Password</label>
+    <input id="gPass" type="password" autocomplete="current-password"
+      onkeydown="if(event.key==='Enter')doLogin()">
+    <div class="note" id="gErr" style="display:none;color:var(--bad);margin-top:8px"></div>
+    <div class="btns"><button class="act" style="flex:1" onclick="doLogin()" data-i18n="bSignIn">Sign in</button></div>
+  </div>
+</div>
+
+<script>
+/* ------------------------------------------------------------------ i18n */
+const T={
+ en:{tHome:"Home",tDevices:"Devices",tConsole:"Console",tSettings:"Settings",tInfo:"Info",
+  wClock:"Time",wWeather:"Weather",wCustom:"Custom value",wBridge:"Bridge",
+  wCustHint:"Set a URL in Settings",hPinned:"Pinned devices",
+  hNoPins:"Nothing pinned yet — use the gear on a device tile.",hPairing:"Pairing",
+  hPairHint:"Enter this code in your home app",hPayload:"QR payload",bCopy:"Copy",
+  bShowQr:"Show QR",bRefresh:"Refresh",bReorder:"Reorder",bDone:"Done",dNone:"No devices yet.",
+  bLog:"Log",bLogClear:"Clear log",bSend:"Send",
+  bSignIn:"Sign in",bSignOut:"Sign out",acctAdmin:"Admin",acctUser:"User",
+  eSignIn:"Wrong name or password",
+  sUsers:"Users",bAddUser:"Add user",uRole:"Role",uPerms:"Permissions",
+  uNewPass:"New password (blank = keep)",uAvatar:"Avatar",
+  uAdminAll:"Admin can do everything - always.",
+  uControl:"Control",uCtlNone:"None",uCtlAll:"All devices",
+  uCtlList:"Only these endpoints",uAddDev:"Add devices",uRemDev:"Remove devices",
+  uNeedNamePass:"Name and password are both required",
+  uDelConfirm:"Delete this user?",
+  sAppearance:"Appearance",sTheme:"Theme",
+  sAuto:"Follow the system",sLight:"Light",sDark:"Dark",
+  sCluster:"Show Matter device type, e.g. On/Off Light (0x0100)",
+  sLat:"Latitude",sLon:"Longitude",sNetwork:"Network",sSsid:"Network",sPass:"Password",
+  bSave:"Save",bScan:"Scan",bJoin:"Reconnect",
+  sHostname:"Hostname",sHostnameHint:"Reachable at",eHostname:"Letters, digits and hyphens only.",
+  wNoneSaved:"No saved networks yet.",wDelConfirm:"Forget this network?",
+  wEditing:"Editing \"%s\" — leave the password blank for an open network.",
+  wScanning:"Scanning…",wScanNone:"Nothing in range.",wScanTitle:"Networks in range",
+  sCard:"Storage card",sToken:"Access token",
+  sTokenHint:"Found on the card itself, in /Concordia/security/api_token. The board also offers it here automatically while no panel is installed.",
+  bUp:"Up",bNewFolder:"New folder",bUpload:"Upload",bOpen:"Open",bEdit:"Edit",
+  bDownload:"Download",bRename:"Rename",sNoPanel:"no panel installed",
+  qFolder:"Name for the new folder",qRename:"New name",qDelete:"Delete",
+  sUploading:"Uploading…",sUnpacked:"Unpacked",sEmpty:"This folder is empty.",
+  wWarn:"Warnings",wWarnNone:"Nothing to report.",wWarnClear:"Clear",
+  wWarnBoot:"earlier run",wWarnNow:"this run",
+  sLogging:"Logging",sLogLevel:"Detail",sLogCats:"Categories",
+  sLogHint:"Higher settings record more and cost more. At the highest, every answered request is kept and the log is mirrored to the card.",
+  sLog0:"off",sLog1:"errors",sLog2:"and warnings",sLog3:"and normal activity",
+  sLog4:"and debug",sLog5:"everything, also to the card",
+  sPower:"Power",bNodeReboot:"Reboot node",
+  bHubReboot:"Reboot hub",bNodeReset:"Factory reset node",bAll:"Wipe everything",
+  iVersions:"Versions",iMatrix:"Matter device types and ecosystem support",
+  iMatrixNote:"of the device types below can be hosted by this bridge.",
+  iType:"Type",iId:"Device type",
+  add:"Add a device",name:"Name",type:"Type",maker:"Manufacturer",model:"Model",serial:"Serial",
+  bAdd:"Add",bApply:"Apply",bRemove:"Remove",bClose:"Close",settings:"Settings",
+  value:"Value",bright:"Brightness",ctemp:"Colour temperature",target:"Target",vTemp:"Temperature",source:"Data source",
+  manual:"Manual",fromApi:"From an API",url:"URL",path:"JSON path (blank = pick automatically)",
+  scale:"Multiply by",poll:"Every, seconds",bTest:"Test",bUnbind:"Back to manual",
+  pin:"Show on the home screen",imu:"Driven by the on-board motion sensor",
+  on:"On",off:"Off",offline:"no link",linkPairing:"pairing…",portal:"setup portal",
+  cRemove:"Delete this device?",cNodeReboot:"Reboot the node?",cHubReboot:"Reboot this hub?",
+  cNodeReset:"Erase all Matter pairings on the node?",cAll:"Erase Wi-Fi, bindings and pairings?",
+  cJoin:"Reconnect Wi-Fi now?",
+  hEdit:"Edit layout",hAddW:"Add block",hAddS:"Add section",hSecName:"Section name",
+  hDelSec:"Delete this section and everything in it?",
+  hNoBlocks:"Nothing here yet — press Edit layout in the header.",
+  hStatus:"Status",wLink:"Link",wDevice:"Device",wNote:"Note",wText:"Text",
+  hShow:"Show",hPins:"Pinned only",hAllDev:"All devices",hUp:"Move up",hDown:"Move down",
+  hDel:"Remove",
+  hName:"Block name",hTz:"Time zone (blank = this device)",h24:"24-hour clock",
+  hSec:"Show seconds",hDate:"Show the date",hUnit:"Unit",hResp:"Response",
+  hJson:"JSON",hPlain:"Plain text",hKind:"Value",hNum:"Number",hTxt:"Text",hBool:"On / off",
+  hDec:"Decimals",hSuf:"Suffix",hBadTz:"unknown time zone",
+  hDev:"This device",hOm:"Open-Meteo, by coordinates",hVal:"The value is",
+  hIso:"A date and time (ISO 8601)",hUnix:"Unix seconds",hMs:"Unix milliseconds",
+  hSub:"Second line, JSON path",hPath:"JSON path",mode:"Mode",
+  vContact:["Closed","Open"],vOccup:["Clear","Occupied"],vLeak:["Dry","Leak"],
+  vFreeze:["OK","Freezing"],vRain:["Dry","Rain"],vLock:["Unlocked","Locked"],
+  vValve:["Closed","Open"],vSmoke:["Normal","Warning","Critical"],
+  vAq:["Unknown","Good","Fair","Moderate","Poor","Very poor","Extreme"],
+  vMode:["Off","Auto","","Cool","Heat"],
+  sPal:"Colour",sCustom:"Custom",sC1:"Main colour",sC2:"Second colour",
+  p_indigo:"Indigo",p_ocean:"Ocean",p_forest:"Forest",p_amber:"Amber",p_rose:"Rose",
+  p_slate:"Slate",
+  rRoom:"Room",rNone:"No room",rAdd:"Add room",rName:"Room name",
+  rDel:"Delete this room? The devices in it stay, without a room.",
+  iBridge:"This bridge",iHint:"Ecosystem columns follow what the platforms publish for bridged Matter accessories and can lag behind their releases. A dash means not published, a question mark means not established."},
+ de:{tHome:"Start",tDevices:"Geräte",tConsole:"Konsole",tSettings:"Einstellungen",tInfo:"Info",
+  wClock:"Uhrzeit",wWeather:"Wetter",wCustom:"Eigener Wert",wBridge:"Bridge",
+  wCustHint:"URL in den Einstellungen setzen",hPinned:"Angeheftete Geräte",
+  hNoPins:"Noch nichts angeheftet — über das Zahnrad einer Kachel.",hPairing:"Kopplung",
+  hPairHint:"Diesen Code in der Home-App eingeben",hPayload:"QR-Nutzdaten",bCopy:"Kopieren",
+  bShowQr:"QR anzeigen",bRefresh:"Aktualisieren",bReorder:"Anordnen",bDone:"Fertig",
+  dNone:"Noch keine Geräte.",bLog:"Protokoll",bLogClear:"Protokoll leeren",bSend:"Senden",
+  bSignIn:"Anmelden",bSignOut:"Abmelden",acctAdmin:"Admin",acctUser:"Benutzer",
+  eSignIn:"Name oder Passwort falsch",
+  sUsers:"Benutzer",bAddUser:"Benutzer hinzufügen",uRole:"Rolle",uPerms:"Berechtigungen",
+  uNewPass:"Neues Passwort (leer = behalten)",uAvatar:"Avatar",
+  uAdminAll:"Admin darf alles - immer.",
+  uControl:"Steuerung",uCtlNone:"Keine",uCtlAll:"Alle Geräte",
+  uCtlList:"Nur diese Endpunkte",uAddDev:"Geräte hinzufügen",uRemDev:"Geräte entfernen",
+  uNeedNamePass:"Name und Passwort sind beide nötig",
+  uDelConfirm:"Diesen Benutzer löschen?",
+  sAppearance:"Darstellung",sTheme:"Design",sAuto:"Wie das System",sLight:"Hell",sDark:"Dunkel",
+  sCluster:"Matter-Gerätetyp zeigen, z. B. On/Off Light (0x0100)",
+  sLat:"Breitengrad",sLon:"Längengrad",sNetwork:"Netzwerk",sSsid:"Netzwerk",
+  sPass:"Passwort",bSave:"Speichern",bScan:"Suchen",bJoin:"Neu verbinden",
+  sHostname:"Hostname",sHostnameHint:"Erreichbar unter",eHostname:"Nur Buchstaben, Ziffern und Bindestriche.",
+  wNoneSaved:"Noch keine gespeicherten Netzwerke.",wDelConfirm:"Dieses Netzwerk vergessen?",
+  wEditing:"Bearbeite \"%s\" — Passwort leer lassen für ein offenes Netzwerk.",
+  wScanning:"Suche…",wScanNone:"Nichts in Reichweite.",wScanTitle:"Netzwerke in Reichweite",
+  sCard:"Speicherkarte",sToken:"Zugriffs-Token",
+  sTokenHint:"Steht auf der Karte selbst, in /Concordia/security/api_token. Solange keine Oberfläche installiert ist, nennt ihn das Board hier von sich aus.",
+  bUp:"Zurück",bNewFolder:"Neuer Ordner",bUpload:"Hochladen",bOpen:"Öffnen",bEdit:"Bearbeiten",
+  bDownload:"Herunterladen",bRename:"Umbenennen",sNoPanel:"keine Oberfläche installiert",
+  qFolder:"Name des neuen Ordners",qRename:"Neuer Name",qDelete:"Löschen",
+  sUploading:"Wird hochgeladen…",sUnpacked:"Entpackt",sEmpty:"Dieser Ordner ist leer.",
+  wWarn:"Warnungen",wWarnNone:"Nichts zu melden.",wWarnClear:"Leeren",
+  wWarnBoot:"früherer Lauf",wWarnNow:"dieser Lauf",
+  sLogging:"Protokoll",sLogLevel:"Ausführlichkeit",sLogCats:"Kategorien",
+  sLogHint:"Höhere Stufen halten mehr fest und kosten mehr. Auf der höchsten wird jede beantwortete Anfrage aufgezeichnet und das Protokoll zusätzlich auf die Karte geschrieben.",
+  sLog0:"aus",sLog1:"Fehler",sLog2:"und Warnungen",sLog3:"und normaler Betrieb",
+  sLog4:"und Debug",sLog5:"alles, auch auf die Karte",
+  sPower:"Energie",
+  bNodeReboot:"Node neu starten",bHubReboot:"Hub neu starten",bNodeReset:"Node zurücksetzen",
+  bAll:"Alles löschen",iVersions:"Versionen",iMatrix:"Matter-Gerätetypen und Unterstützung",
+  iMatrixNote:"der unten aufgeführten Gerätetypen kann diese Bridge bereitstellen.",
+  iType:"Typ",iId:"Gerätetyp",
+  add:"Gerät hinzufügen",name:"Name",type:"Typ",maker:"Hersteller",model:"Modell",
+  serial:"Seriennummer",bAdd:"Hinzufügen",bApply:"Übernehmen",bRemove:"Entfernen",
+  bClose:"Schließen",settings:"Einstellungen",value:"Wert",target:"Sollwert",vTemp:"Temperatur",bright:"Helligkeit",
+  ctemp:"Farbtemperatur",source:"Datenquelle",manual:"Manuell",fromApi:"Von einer API",
+  url:"URL",path:"JSON-Pfad (leer = automatisch)",scale:"Multiplizieren mit",
+  poll:"Alle, Sekunden",bTest:"Testen",bUnbind:"Zurück auf manuell",
+  pin:"Auf dem Startbildschirm zeigen",imu:"Vom eingebauten Bewegungssensor gesteuert",
+  on:"An",off:"Aus",offline:"keine Verbindung",linkPairing:"koppelt…",portal:"Einrichtungsportal",
+  cRemove:"Dieses Gerät löschen?",cNodeReboot:"Node neu starten?",cHubReboot:"Diesen Hub neu starten?",
+  cNodeReset:"Alle Matter-Kopplungen löschen?",cAll:"WLAN, Bindungen und Kopplungen löschen?",
+  cJoin:"WLAN jetzt neu verbinden?",
+  hEdit:"Layout bearbeiten",hAddW:"Block hinzufügen",hAddS:"Bereich hinzufügen",
+  hSecName:"Bereichsname",hDelSec:"Diesen Bereich mit allem darin löschen?",
+  hNoBlocks:"Noch nichts hier — oben auf Layout bearbeiten tippen.",
+  hStatus:"Status",wLink:"Verbindung",wDevice:"Gerät",wNote:"Notiz",wText:"Text",
+  hShow:"Anzeigen",hPins:"Nur angeheftete",hAllDev:"Alle Geräte",hUp:"Nach oben",
+  hDown:"Nach unten",hDel:"Entfernen",
+  hName:"Name des Blocks",hTz:"Zeitzone (leer = dieses Gerät)",h24:"24-Stunden-Uhr",
+  hSec:"Sekunden zeigen",hDate:"Datum zeigen",hUnit:"Einheit",hResp:"Antwort",
+  hJson:"JSON",hPlain:"Nur Text",hKind:"Wert",hNum:"Zahl",hTxt:"Text",hBool:"An / aus",
+  hDec:"Nachkommastellen",hSuf:"Endung",hBadTz:"unbekannte Zeitzone",
+  hDev:"Dieses Gerät",hOm:"Open-Meteo, nach Koordinaten",hVal:"Der Wert ist",
+  hIso:"Datum und Uhrzeit (ISO 8601)",hUnix:"Unix-Sekunden",hMs:"Unix-Millisekunden",
+  hSub:"Zweite Zeile, JSON-Pfad",hPath:"JSON-Pfad",mode:"Modus",
+  vContact:["Zu","Offen"],vOccup:["Frei","Belegt"],vLeak:["Trocken","Wasser"],
+  vFreeze:["OK","Frost"],vRain:["Trocken","Regen"],vLock:["Offen","Verriegelt"],
+  vValve:["Zu","Offen"],vSmoke:["Normal","Warnung","Kritisch"],
+  vAq:["Unbekannt","Gut","Ordentlich","Mäßig","Schlecht","Sehr schlecht","Extrem"],
+  vMode:["Aus","Auto","","Kühlen","Heizen"],
+  sPal:"Farbe",sCustom:"Eigene",sC1:"Hauptfarbe",sC2:"Zweite Farbe",
+  p_indigo:"Indigo",p_ocean:"Ozean",p_forest:"Wald",p_amber:"Bernstein",p_rose:"Rosé",
+  p_slate:"Schiefer",
+  rRoom:"Raum",rNone:"Ohne Raum",rAdd:"Raum hinzufügen",rName:"Name des Raums",
+  rDel:"Diesen Raum löschen? Die Geräte bleiben, dann ohne Raum.",
+  iBridge:"Diese Bridge",iHint:"Die Spalten geben wieder, was die Plattformen für gebrückte Matter-Geräte veröffentlichen, und können hinterherhinken. Ein Strich heißt nicht veröffentlicht, ein Fragezeichen heißt nicht gesichert."},
+ da:{tHome:"Hjem",tDevices:"Enheder",tConsole:"Konsol",tSettings:"Indstillinger",tInfo:"Info",
+  wClock:"Klokken",wWeather:"Vejr",wCustom:"Egen værdi",wBridge:"Bro",
+  wCustHint:"Angiv en URL i indstillinger",hPinned:"Fastgjorte enheder",
+  hNoPins:"Intet fastgjort endnu — brug tandhjulet på en flise.",hPairing:"Parring",
+  hPairHint:"Indtast koden i din home-app",hPayload:"QR-data",bCopy:"Kopiér",
+  bShowQr:"Vis QR",bRefresh:"Opdatér",bReorder:"Omarrangér",bDone:"Færdig",
+  dNone:"Ingen enheder endnu.",bLog:"Log",bLogClear:"Ryd log",bSend:"Send",
+  bSignIn:"Log ind",bSignOut:"Log ud",acctAdmin:"Admin",acctUser:"Bruger",
+  eSignIn:"Forkert navn eller adgangskode",
+  sUsers:"Brugere",bAddUser:"Tilføj bruger",uRole:"Rolle",uPerms:"Tilladelser",
+  uNewPass:"Ny adgangskode (tom = behold)",uAvatar:"Avatar",
+  uAdminAll:"Admin kan det hele - altid.",
+  uControl:"Styring",uCtlNone:"Ingen",uCtlAll:"Alle enheder",
+  uCtlList:"Kun disse endpoints",uAddDev:"Tilføj enheder",uRemDev:"Fjern enheder",
+  uNeedNamePass:"Navn og adgangskode kræves begge",
+  uDelConfirm:"Slet denne bruger?",
+  sAppearance:"Udseende",sTheme:"Tema",sAuto:"Følg systemet",sLight:"Lyst",sDark:"Mørkt",
+  sCluster:"Vis Matter-enhedstype, fx On/Off Light (0x0100)",
+  sLat:"Breddegrad",sLon:"Længdegrad",sNetwork:"Netværk",sSsid:"Netværk",
+  sPass:"Adgangskode",bSave:"Gem",bScan:"Søg",bJoin:"Forbind igen",
+  sHostname:"Værtsnavn",sHostnameHint:"Tilgængelig på",eHostname:"Kun bogstaver, tal og bindestreger.",
+  wNoneSaved:"Endnu ingen gemte netværk.",wDelConfirm:"Glem dette netværk?",
+  wEditing:"Redigerer \"%s\" — lad adgangskoden stå tom for et åbent netværk.",
+  wScanning:"Søger…",wScanNone:"Intet i nærheden.",wScanTitle:"Netværk i nærheden",
+  sCard:"Hukommelseskort",sToken:"Adgangstoken",
+  sTokenHint:"Står på kortet selv, i /Concordia/security/api_token. Så længe der ikke er installeret en grænseflade, oplyser boksen den her af sig selv.",
+  bUp:"Op",bNewFolder:"Ny mappe",bUpload:"Upload",bOpen:"Åbn",bEdit:"Rediger",
+  bDownload:"Hent",bRename:"Omdøb",sNoPanel:"ingen grænseflade installeret",
+  qFolder:"Navn på den nye mappe",qRename:"Nyt navn",qDelete:"Slet",
+  sUploading:"Uploader…",sUnpacked:"Pakket ud",sEmpty:"Denne mappe er tom.",
+  wWarn:"Advarsler",wWarnNone:"Intet at melde.",wWarnClear:"Ryd",
+  wWarnBoot:"tidligere kørsel",wWarnNow:"denne kørsel",
+  sLogging:"Log",sLogLevel:"Detaljer",sLogCats:"Kategorier",
+  sLogHint:"Højere niveauer gemmer mere og koster mere. På det højeste gemmes hver besvaret forespørgsel, og loggen skrives også til kortet.",
+  sLog0:"fra",sLog1:"fejl",sLog2:"og advarsler",sLog3:"og normal drift",
+  sLog4:"og debug",sLog5:"alt, også til kortet",
+  sPower:"Strøm",
+  bNodeReboot:"Genstart node",bHubReboot:"Genstart hub",bNodeReset:"Nulstil node",
+  bAll:"Slet alt",iVersions:"Versioner",iMatrix:"Matter-enhedstyper og understøttelse",
+  iMatrixNote:"af enhedstyperne nedenfor kan denne bro levere.",
+  iType:"Type",iId:"Enhedstype",
+  add:"Tilføj en enhed",name:"Navn",type:"Type",maker:"Producent",model:"Model",
+  serial:"Serienummer",bAdd:"Tilføj",bApply:"Anvend",bRemove:"Fjern",bClose:"Luk",
+  settings:"Indstillinger",value:"Værdi",target:"Mål",vTemp:"Temperatur",bright:"Lysstyrke",ctemp:"Farvetemperatur",
+  source:"Datakilde",manual:"Manuelt",fromApi:"Fra en API",url:"URL",
+  path:"JSON-sti (tom = vælg automatisk)",scale:"Gang med",poll:"Hvert, sekunder",
+  bTest:"Test",bUnbind:"Tilbage til manuelt",pin:"Vis på startskærmen",
+  imu:"Styret af den indbyggede bevægelsessensor",on:"Til",off:"Fra",
+  offline:"ingen forbindelse",linkPairing:"parrer…",portal:"opsætningsportal",
+  cRemove:"Slet denne enhed?",cNodeReboot:"Genstart node?",cHubReboot:"Genstart hub?",
+  cNodeReset:"Slet alle Matter-parringer?",cAll:"Slet Wi-Fi, bindinger og parringer?",
+  cJoin:"Forbind Wi-Fi igen nu?",
+  hEdit:"Redigér layout",hAddW:"Tilføj blok",hAddS:"Tilføj sektion",hSecName:"Sektionsnavn",
+  hDelSec:"Slet denne sektion og alt i den?",
+  hNoBlocks:"Ikke noget her endnu — tryk Redigér layout i toppen.",
+  hStatus:"Status",wLink:"Forbindelse",wDevice:"Enhed",wNote:"Note",wText:"Tekst",
+  hShow:"Vis",hPins:"Kun fastgjorte",hAllDev:"Alle enheder",hUp:"Op",hDown:"Ned",
+  hDel:"Fjern",
+  hName:"Blokkens navn",hTz:"Tidszone (tom = denne enhed)",h24:"24-timers ur",
+  hSec:"Vis sekunder",hDate:"Vis datoen",hUnit:"Enhed",hResp:"Svar",
+  hJson:"JSON",hPlain:"Ren tekst",hKind:"Værdi",hNum:"Tal",hTxt:"Tekst",hBool:"Til / fra",
+  hDec:"Decimaler",hSuf:"Endelse",hBadTz:"ukendt tidszone",
+  hDev:"Denne enhed",hOm:"Open-Meteo, efter koordinater",hVal:"Værdien er",
+  hIso:"Dato og tid (ISO 8601)",hUnix:"Unix-sekunder",hMs:"Unix-millisekunder",
+  hSub:"Anden linje, JSON-sti",hPath:"JSON-sti",mode:"Tilstand",
+  vContact:["Lukket","Åben"],vOccup:["Fri","Optaget"],vLeak:["Tør","Vand"],
+  vFreeze:["OK","Frost"],vRain:["Tør","Regn"],vLock:["Ulåst","Låst"],
+  vValve:["Lukket","Åben"],vSmoke:["Normal","Advarsel","Kritisk"],
+  vAq:["Ukendt","God","Rimelig","Moderat","Dårlig","Meget dårlig","Ekstrem"],
+  vMode:["Fra","Auto","","Køl","Varme"],
+  sPal:"Farve",sCustom:"Egen",sC1:"Hovedfarve",sC2:"Anden farve",
+  p_indigo:"Indigo",p_ocean:"Ocean",p_forest:"Skov",p_amber:"Rav",p_rose:"Rosa",
+  p_slate:"Skifer",
+  rRoom:"Rum",rNone:"Uden rum",rAdd:"Tilføj rum",rName:"Rummets navn",
+  rDel:"Slet dette rum? Enhederne bliver, men uden rum.",
+  iBridge:"Denne bro",iHint:"Kolonnerne afspejler hvad platformene oplyser om Matter-broer og kan halte bagefter. En streg betyder ikke oplyst, et spørgsmålstegn betyder ikke fastslået."}};
+
+let lang="en",status={},devices=[],types=[],ui={},ordering=false,me=null;
+const t=k=>(T[lang]&&T[lang][k])||T.en[k]||k;
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+/* --------------------------------------------------------------- backend */
+async function api(p,body){
+  const o=body!==undefined?{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body}:{};
+  return (await fetch(p,o)).json();
+}
+/* A refusal shown nowhere is a bug wearing a costume: several callers below
+ * only ever look at what cmd() returns when there is something to display -
+ * tap() flips a switch and moves on, sendControl() closes over its modal.
+ * Before this, one of those callers discarding "no control permission for
+ * EP7" meant the switch flipped, nothing said why, and it quietly reverted
+ * eight seconds later on the next poll - indistinguishable from a flaky
+ * board. The toast is the fix: cmd() itself surfaces every refusal, so no
+ * caller has to remember to. */
+async function cmd(text,quiet){
+  const r=await api("/api/cmd","cmd="+encodeURIComponent(text));
+  if(r.error){
+    if(!me){showGate();return "";}
+    if(!quiet)toast("⚠ "+r.error);
+    return "⚠ "+r.error;
+  }
+  return r.out;
+}
+function toast(msg){
+  let el=$("#toast");
+  if(!el){el=document.createElement("div");el.id="toast";document.body.appendChild(el);}
+  el.textContent=msg;
+  el.classList.add("show");
+  clearTimeout(toast._t);
+  toast._t=setTimeout(()=>el.classList.remove("show"),3400);
+}
+
+/* --------------------------------------------------------------- account
+ * me is null until boot() (or a successful login) fills it. The gate owns
+ * the "not signed in" state entirely - see the CSS/HTML above - so
+ * paintAccount() only ever has a signed-in header pill to draw; the header
+ * is not even visible while it would not.
+ */
+const ICO_SIGNOUT=`<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M17 16l4-4-4-4"/><path d="M21 12H9"/></svg>`;
+
+/* An <img> when the account has one on the card, a coloured initial when it
+ * does not - see .avatar in the stylesheet. The query string is not cache
+ * defeat for its own sake: it is what makes a freshly uploaded picture show
+ * up without a hard reload, since the URL would otherwise be identical to
+ * the one the browser already cached. */
+function avatarHtml(u,big){
+  const cls="avatar"+(big?" lg":"");
+  if(u&&u.avatar)return `<img class="${cls}" src="/api/users/avatar?id=${u.id}&v=${Date.now()}">`;
+  const ch=esc(((u&&u.name)||"?").trim().charAt(0).toUpperCase()||"?");
+  return `<span class="${cls}">${ch}</span>`;
+}
+
+function paintAccount(){
+  const p=$("#acctPill");
+  if(!status.users||!me){p.style.display="none";return;}
+  p.style.display="";
+  p.innerHTML=avatarHtml(me)+`<b>${esc(me.name)}</b>`+
+    `<button class="ib" data-ti="bSignOut" onclick="doLogout()">${ICO_SIGNOUT}</button>`;
+  applyI18nOne(p);
+}
+/* applyI18n() walks the whole document; this is the same walk over one
+ * corner of it, for markup built (or needing translation) before applyI18n()
+ * has run at all - the gate at boot, the account pill after every rebuild. */
+function applyI18nOne(root){
+  root.querySelectorAll("[data-i18n]").forEach(e=>e.textContent=t(e.dataset.i18n));
+  root.querySelectorAll("[data-ti]").forEach(e=>{e.title=t(e.dataset.ti);e.setAttribute("aria-label",t(e.dataset.ti));});
+}
+
+function showGate(){
+  $("#mBack").classList.remove("open"); /* a gate on top of an open modal is
+    reachable either way, but leaving the modal "open" underneath would show
+    it again the instant hideGate() runs */
+  document.body.classList.add("gated");
+  $("#gBrand").textContent=status.brand||"Concordia";
+  $("#gErr").style.display="none";
+  $("#gPass").value="";
+  $("#gate").classList.add("open");
+  setTimeout(()=>$("#gName")?.focus(),50);
+}
+function hideGate(){
+  document.body.classList.remove("gated");
+  $("#gate").classList.remove("open");
+}
+async function doLogin(){
+  const name=$("#gName").value.trim(), pass=$("#gPass").value;
+  const d=await api("/api/session/login",
+    "name="+encodeURIComponent(name)+"&password="+encodeURIComponent(pass));
+  if(d.error){
+    $("#gErr").textContent=d.error;
+    $("#gErr").style.display="block";
+    return;
+  }
+  me=d;
+  hideGate();
+  await afterAuth();
+}
+async function doLogout(){
+  await api("/api/session/logout","");
+  me=null;
+  showGate();
+}
+
+/* ------------------------------------------------------------- user admin
+ * Visible, and only fetched, for an admin - everyone else never sees this
+ * card at all. Mirrors the fs table further down: one delegated click
+ * listener, buttons carry what they act on in data-*.
+ */
+let usersData=[], editingUserId=0, currentEditPerm={};
+
+function permSummary(p){
+  const bits=[p.control==="all"?t("uCtlAll"):p.control&&p.control!=="none"?"EP "+p.control:t("uCtlNone")];
+  if(p.add)bits.push(t("uAddDev"));
+  if(p.remove)bits.push(t("uRemDev"));
+  if(p.settings)bits.push(t("settings"));
+  return bits.join(" · ");
+}
+
+async function loadUsers(){
+  const show=!!(me&&me.role==="admin");
+  $("#usersHead").style.display=show?"":"none";
+  $("#usersCard").style.display=show?"":"none";
+  if(!show)return;
+  try{
+    const d=await(await fetch("/api/users")).json();
+    usersData=d.users||[];
+    $("#usersTable tbody").innerHTML=usersData.map(u=>`<tr>
+        <td>${avatarHtml(u)} ${esc(u.name)}</td>
+        <td>${esc(t(u.role==="admin"?"acctAdmin":"acctUser"))}</td>
+        <td class="note">${u.role==="admin"?"—":esc(permSummary(u.perm))}</td>
+        <td style="white-space:nowrap">
+          <button class="ghost" data-act="edituser" data-id="${u.id}">${esc(t("bEdit"))}</button>
+          ${u.role!=="admin"?`<button class="danger" data-act="deluser" data-id="${u.id}">${esc(t("bRemove"))}</button>`:""}
+        </td></tr>`).join("");
+  }catch(e){}
+}
+document.addEventListener("click",ev=>{
+  const b=ev.target.closest("#usersTable button[data-act]");
+  if(!b)return;
+  if(b.dataset.act==="edituser")openUserModal(+b.dataset.id);
+  if(b.dataset.act==="deluser")deleteUser(+b.dataset.id);
+});
+
+function paintUserPerms(){
+  const box=$("#uPermBox");
+  if($("#uRole").value==="admin"){box.innerHTML=`<div class="note">${esc(t("uAdminAll"))}</div>`;return;}
+  const p=currentEditPerm, isList=p.control&&p.control!=="all"&&p.control!=="none";
+  box.innerHTML=`
+    <label data-i18n="uControl">Control</label>
+    <select id="uControl" onchange="$('#uControlList').style.display=this.value==='list'?'':'none'">
+      <option value="none" ${p.control==="none"||!p.control?"selected":""}>${esc(t("uCtlNone"))}</option>
+      <option value="all" ${p.control==="all"?"selected":""}>${esc(t("uCtlAll"))}</option>
+      <option value="list" ${isList?"selected":""}>${esc(t("uCtlList"))}</option>
+    </select>
+    <input id="uControlList" placeholder="4,7,12" value="${isList?esc(p.control):""}"
+      style="margin-top:6px;display:${isList?"":"none"}">
+    <div class="chk"><input type="checkbox" id="uAdd" ${p.add?"checked":""}>
+      <span data-i18n="uAddDev">Add devices</span></div>
+    <div class="chk"><input type="checkbox" id="uRemove" ${p.remove?"checked":""}>
+      <span data-i18n="uRemDev">Remove devices</span></div>
+    <div class="chk"><input type="checkbox" id="uSettings" ${p.settings?"checked":""}>
+      <span data-i18n="settings">Settings</span></div>`;
+}
+
+function openUserModal(id){
+  editingUserId=id;
+  const u=id?usersData.find(x=>x.id===id):null;
+  currentEditPerm=u?u.perm:{control:"none",add:false,remove:false,settings:false};
+  const isAdminRow=u&&u.role==="admin";
+  showModal(`${head(id?t("bEdit"):t("bAddUser"))}
+    ${id?`<div id="uAvatarBig" style="text-align:center;margin-bottom:10px">${avatarHtml(u,true)}</div>`:""}
+    <label data-i18n="name">Name</label>
+    <input id="uName" value="${u?esc(u.name):""}" ${u?"disabled":""} autocomplete="off">
+    <label>${esc(id?t("uNewPass"):t("sPass"))}</label>
+    <input id="uPass" type="password" autocomplete="new-password">
+    <label data-i18n="uRole">Role</label>
+    <select id="uRole" onchange="paintUserPerms()" ${isAdminRow?"disabled":""}>
+      <option value="user" ${!isAdminRow?"selected":""}>${esc(t("acctUser"))}</option>
+      <option value="admin" ${isAdminRow?"selected":""}>${esc(t("acctAdmin"))}</option>
+    </select>
+    ${isAdminRow?`<div class="note">${esc(t("uAdminAll"))}</div>`:""}
+    <div id="uPermBox"></div>
+    ${id?`<label data-i18n="uAvatar">Avatar</label>
+      <input type="file" id="uAvatarFile" accept="image/png,image/jpeg" onchange="uploadAvatarFor(${id})">`:""}
+    <div class="note" id="uErr" style="display:none;color:var(--bad);margin-top:8px"></div>
+    <div class="btns"><button class="act" onclick="saveUser()">${esc(t("bSave"))}</button></div>`);
+  paintUserPerms();
+}
+
+async function saveUser(){
+  const name=$("#uName").value.trim(), pass=$("#uPass").value, role=$("#uRole").value;
+  if(!editingUserId&&(!name||!pass)){
+    $("#uErr").textContent=t("uNeedNamePass");
+    $("#uErr").style.display="block";
+    return;
+  }
+  const body=new URLSearchParams();
+  if(editingUserId)body.set("id",editingUserId); else body.set("name",name);
+  if(pass)body.set("password",pass);
+  body.set("role",role);
+  if(role!=="admin"){
+    const ctl=$("#uControl").value;
+    body.set("control",ctl==="list"?$("#uControlList").value.trim():ctl);
+    body.set("add",$("#uAdd").checked?"1":"0");
+    body.set("remove",$("#uRemove").checked?"1":"0");
+    body.set("settings",$("#uSettings").checked?"1":"0");
+  }
+  const r=await api("/api/users",body.toString());
+  if(r.error){
+    $("#uErr").textContent=r.error;
+    $("#uErr").style.display="block";
+    return;
+  }
+  closeModal();
+  loadUsers();
+}
+
+async function deleteUser(id){
+  if(!confirm(t("uDelConfirm")))return;
+  try{
+    const r=await(await fetch("/api/users?id="+id,{method:"DELETE"})).json();
+    if(!r.ok){alert(r.error||"?");return;}
+    loadUsers();
+  }catch(e){}
+}
+
+async function uploadAvatarFor(id){
+  const f=$("#uAvatarFile").files[0];
+  if(!f)return;
+  const fd=new FormData();
+  fd.append("file",f);
+  try{
+    const r=await(await fetch("/api/users/avatar?id="+id,{method:"POST",body:fd})).json();
+    if(!r.ok){
+      $("#uErr").textContent=r.error||"?";
+      $("#uErr").style.display="block";
+      return;
+    }
+    $("#uErr").style.display="none";
+    /* The modal itself is not rebuilt by loadUsers() (that only touches the
+       table behind it), so its own big preview needs the same fresh, cache-
+       busted URL by hand - this was the bug: everything else updated, the
+       one thing you were looking at while uploading did not. */
+    const big=$("#uAvatarBig");
+    if(big)big.innerHTML=avatarHtml({id,avatar:true},true);
+    loadUsers();
+    if(me&&me.id===id){
+      const s=await api("/api/session");
+      if(!(s&&s.ok===false))me=s;
+      paintAccount();
+    }
+  }catch(e){}
+}
+async function saveUi(){
+  ui.theme=$("#setTheme").value; ui.cluster=$("#setCluster").checked;
+  ui.pal=$("#setPal").value; ui.c1=$("#setC1").value; ui.c2=$("#setC2").value;
+  applyTheme();
+  await fetch("/api/ui",{method:"POST",headers:{"Content-Type":"text/plain"},body:JSON.stringify(ui)});
+}
+
+/* ------------------------------------------------------------ appearance */
+/* Each palette is just the two accents; the neutrals are mixed from them in CSS,
+   so six pairs of hex give six complete looks. "custom" takes its pair from the
+   two colour pickers instead. */
+const PAL={indigo:["#4a6cf7","#7b4df6"], ocean:["#0284c7","#0d9488"],
+           forest:["#15803d","#4d7c0f"], amber:["#ea580c","#ca8a04"],
+           rose:["#e11d48","#a21caf"],   slate:["#475569","#334155"]};
+function applyTheme(){
+  const th=ui.theme||"auto";
+  document.documentElement.dataset.theme=th;
+  if(th==="auto"){
+    const dark=window.matchMedia("(prefers-color-scheme:dark)").matches;
+    document.documentElement.classList.toggle("dark",dark);
+  } else document.documentElement.classList.remove("dark");
+
+  /* An unset palette means the default, not a custom one - resolve it the same
+     way the picker does or the two disagree on a fresh install. */
+  const name=PAL[ui.pal]?ui.pal:(ui.pal?"custom":"indigo");
+  const p=PAL[name]||[ui.c1||PAL.indigo[0],ui.c2||PAL.indigo[1]];
+  /* Dark surfaces need the accents lifted or they sink into the background. */
+  $("#pal").textContent=
+    `:root{--accent:${p[0]};--accent2:${p[1]}}`+
+    `:root[data-theme="dark"],:root[data-theme="auto"].dark{`+
+    `--accent:color-mix(in srgb,${p[0]} 68%,#fff);`+
+    `--accent2:color-mix(in srgb,${p[1]} 68%,#fff)}`;
+  const row=$("#palRow"); if(row)row.style.display=name==="custom"?"flex":"none";
+}
+window.matchMedia("(prefers-color-scheme:dark)").addEventListener("change",applyTheme);
+
+/* -------------------------------------------------------- type knowledge */
+const ICON={temp:"🌡️",humidity:"💧",light:"💡",dimmer:"💡",colorlight:"💡",rgblight:"🎨",
+ plug:"🔌",dimplug:"🔌",contact:"🚪",occupancy:"🏃",pressure:"📊",flow:"🚿",illuminance:"☀️",
+ leak:"💦",blind:"🪟",lock:"🔒",smoke:"🚨",airquality:"🌫️",soil:"🌱",fan:"🌀",purifier:"🌬️",
+ thermostat:"🎛️",valve:"🚰",freeze:"❄️",rain:"🌧️",onoffsensor:"⚡",mountedonoff:"🔘",
+ mounteddimmer:"🎚️",aircon:"🧊",heatpump:"♨️",waterheater:"🔥",hvacunit:"🌡️"};
+const icon=s=>ICON[s]||"📦";
+
+const typeOf=s=>types.find(x=>x.slug===s)||{};
+const typeName=s=>typeOf(s).name||s;
+const typeKind=s=>typeOf(s).kind||"number";
+const typeId=s=>typeOf(s).id||"";
+function typeLabel(s){
+  const base=typeName(s);
+  return (ui.cluster&&typeId(s))?`${base} (${typeId(s)})`:base;
+}
+
+/* Units for each part of a kind. Composite kinds ("bool+level+mireds") list
+   their parts in the order `bridge set` takes them. */
+const PART={
+ bool:{ui:"toggle"},
+ /* Brightness travels as 0..254 but is shown as a percentage - nobody thinks in
+    254ths. Zero is not a Matter level; here it is how you switch the light off. */
+ level:{ui:"slider",min:0,max:100,step:1,pct:true,unit:"%",lbl:"bright"},
+ mireds:{ui:"slider",min:153,max:500,step:1,f:1,unit:"mrd",lbl:"ctemp"},
+ percent:{ui:"slider",min:0,max:100,step:1,f:1,unit:"%"},
+ centipercent:{ui:"slider",min:0,max:100,step:.1,f:100,unit:"%"},
+ centidegree:{ui:"number",step:.1,f:100,unit:"°C",lbl:"vTemp"},
+ setpoint:{ui:"number",step:.1,f:100,unit:"°C",lbl:"target"},
+ mode:{ui:"pick",voc:"vMode",lbl:"mode"},
+ enum:{ui:"pick",voc:"vAq",lbl:"value"},
+ number:{ui:"number",step:1,f:1,unit:""}};
+/* Three types share the bare "number" kind but mean different things, and a
+   reading with no unit is not a reading. Flow arrives in deci-m3/h. */
+const UNIT={pressure:{unit:"hPa"},illuminance:{unit:"lx"},
+            flow:{f:10,step:.1,unit:"m³/h"}};
+const pcache={};
+function partsOf(slug){
+  if(pcache[slug])return pcache[slug];
+  const p=typeKind(slug).split("+").map(x=>PART[x]||PART.number);
+  if(UNIT[slug]&&p.length===1)p[0]={...p[0],...UNIT[slug]};
+  /* Never cache a guess made before /api/types has answered. */
+  if(typeOf(slug).kind)pcache[slug]=p;
+  return p;
+}
+const toUi=(p,raw)=>p.pct?Math.round((raw||0)/2.54)
+                         :(p.f>1?Math.round(raw/p.f*10)/10:raw);
+const toRaw=(p,v)=>p.pct?Math.max(0,Math.min(254,Math.round(parseFloat(v||0)*2.54)))
+                        :Math.round(parseFloat(v||0)*(p.f||1));
+
+/* Read-only. A picker is something you can act on, so air quality no longer
+   counts as a sensor you can merely stare at. */
+const isSensor=d=>{const p=partsOf(d.type);return p.length===1&&p[0].ui==="number";};
+const isImu=d=>/vibrat/i.test(d.name||"");
+
+/* "On" and "Off" are the wrong words for a contact, a lock or a leak detector. */
+const VOC={contact:"vContact",occupancy:"vOccup",leak:"vLeak",freeze:"vFreeze",
+           rain:"vRain",lock:"vLock",valve:"vValve",smoke:"vSmoke"};
+function fmtPart(p,raw){
+  if(p.ui==="pick"){const v=t(p.voc)||[];return v[raw]||String(raw);}
+  const v=toUi(p,raw);
+  return p.unit?`${v} ${p.unit}`:String(v);
+}
+function shown(d){
+  if(!d.has)return "—";
+  const parts=partsOf(d.type), vals=[d.value,d.v2,d.v3], p0=parts[0];
+  if(p0.ui==="toggle"){
+    const voc=VOC[d.type]&&t(VOC[d.type]);
+    const s=voc?(voc[d.value]||voc[0]):(d.value?t("on"):t("off"));
+    /* A dimmer that only ever says "On" hides the one number that matters. */
+    const p1=parts[1];
+    return (d.value&&p1&&p1.ui==="slider"&&vals[1]!=null)?`${s} · ${fmtPart(p1,vals[1])}`:s;
+  }
+  /* The climate family reads "now, then the target". */
+  if(p0.unit==="°C"&&parts[1]&&parts[1].lbl==="target"&&vals[1]!=null)
+    return `${fmtPart(p0,d.value)} → ${fmtPart(parts[1],vals[1])}`;
+  return fmtPart(p0,d.value);
+}
+
+/* ------------------------------------------------------------- ui config */
+const meta=ep=>(ui.meta&&ui.meta[ep])||{};
+function setMeta(ep,m){ui.meta=ui.meta||{};ui.meta[ep]=m;}
+const pinned=ep=>(ui.pins||[]).includes(ep);
+function togglePin(ep,on){
+  ui.pins=(ui.pins||[]).filter(x=>x!==ep);
+  if(on)ui.pins.push(ep);
+}
+function ordered(list){
+  const ord=ui.order||[];
+  return list.slice().sort((a,b)=>{
+    const ia=ord.indexOf(a.ep), ib=ord.indexOf(b.ep);
+    return (ia<0?1e6+a.ep:ia)-(ib<0?1e6+b.ep:ib);
+  });
+}
+
+/* ---------------------------------------------------------------- render */
+/* The same device can now appear in any number of blocks, so values are marked
+   with data-v rather than an id and every match is repainted. */
+const $$=s=>document.querySelectorAll(s);
+function tile(d){
+  const clickable=!isSensor(d)&&!isImu(d);
+  const on=partsOf(d.type)[0].ui==="toggle"&&d.value;
+  return `<div class="tile ${clickable?"act":""} ${on?"on":""} ${ordering?"moving":""}"
+       data-ep="${d.ep}" ${clickable&&!ordering?`onclick="tap(${d.ep})"`:""}>
+    ${ordering?"":`<button class="gear" onclick="event.stopPropagation();openDevice(${d.ep})">⚙</button>`}
+    ${d.bind?'<span class="badge">API</span>':(isImu(d)?'<span class="badge">IMU</span>':"")}
+    <div class="ico">${icon(d.type)}</div>
+    <div class="tname">${esc(d.name)}</div>
+    <div class="tsub">${esc(typeLabel(d.type))} · EP${d.ep}</div>
+    <div class="tval" data-v="${d.ep}">${esc(shown(d))}</div>
+  </div>`;
+}
+
+/* Devices are grouped into rooms. A room is only a name and an id; which room a
+   device belongs to lives with the rest of its notes, in ui.meta. */
+const rooms=()=>ui.rooms||(ui.rooms=[]);
+const roomOf=ep=>meta(ep).room||"";
+function setRoom(ep,rid){
+  const m=Object.assign({},meta(ep));
+  if(rid)m.room=rid; else delete m.room;
+  setMeta(ep,m);
+}
+function render(){
+  const list=ordered(devices);
+  const groups=rooms().map(r=>({r,ds:list.filter(d=>roomOf(d.ep)===r.i)}));
+  const loose=list.filter(d=>!rooms().some(r=>r.i===roomOf(d.ep)));
+  groups.push({r:null,ds:loose});
+
+  $("#tiles").innerHTML=groups.map(g=>{
+    /* An empty room is only worth showing while you are arranging - then it is
+       the target you drop the first device onto. Otherwise it is dead space. */
+    if(!g.ds.length&&!(g.r&&ordering))return "";
+    const head=g.r
+      ? (ordering
+         ? `<div class="sechead">
+              <input value="${esc(g.r.n||"")}" placeholder="${t("rName")}"
+                     oninput="renameRoom('${g.r.i}',this.value)">
+              <button class="sbtn" title="${t("hUp")}" onclick="moveRoom('${g.r.i}',-1)">${SVG_UP}</button>
+              <button class="sbtn" title="${t("hDown")}" onclick="moveRoom('${g.r.i}',1)">${SVG_DN}</button>
+              <button class="sbtn" title="${t("hDel")}" onclick="delRoom('${g.r.i}')">${SVG_RM}</button>
+            </div>`
+         : `<div class="sechead"><h2>${esc(g.r.n||t("rRoom"))}</h2></div>`)
+      : (rooms().length?`<div class="sechead"><h2>${t("rNone")}</h2></div>`:"");
+    return `<div class="sec">${head}
+      <div class="grid droom" data-room="${g.r?g.r.i:""}">${g.ds.map(tile).join("")}</div></div>`;
+  }).join("")+
+  (ordering?`<div class="editbar">
+      <button class="sbtn wide" onclick="addRoom()">+ ${t("rAdd")}</button></div>`:"");
+
+  $("#noDev").style.display=list.length?"none":"block";
+  if(ordering)enableDrag();
+  if(!editing)renderHome();   /* rebuilding mid-drag would drop the pointer */
+  paintStatus();
+}
+function addRoom(){rooms().push({i:uid(),n:""});render();saveUi();}
+function renameRoom(rid,v){const r=rooms().find(x=>x.i===rid);if(r){r.n=v;lazySave();}}
+function moveRoom(rid,d){
+  const a=rooms(), i=a.findIndex(x=>x.i===rid), j=i+d;
+  if(i<0||j<0||j>=a.length)return;
+  [a[i],a[j]]=[a[j],a[i]]; render(); saveUi();
+}
+function delRoom(rid){
+  if(!confirm(t("rDel")))return;
+  ui.rooms=rooms().filter(x=>x.i!==rid);
+  devices.forEach(d=>{if(roomOf(d.ep)===rid)setRoom(d.ep,"");});
+  render(); saveUi();
+}
+
+/* status.link distinguishes "commissioning is probably under way" from an
+ * actual outage - see NrfLink::linkState() on the hub. BLE advertising makes
+ * the UART unreliable while it runs, by design (nRF54l15_Bridge/
+ * PORTING_NOTES.md), so a silent link the node has never reported paired on
+ * is not a fault worth alarming anyone with "no link" over. status.bridge
+ * (used elsewhere for the endpoint count) stays exactly what it always was -
+ * true only while a request is actually getting through right now. */
+function linkDotClass(){
+  if(status.link==="pairing")return "warn";
+  return status.bridge?"on":"off";
+}
+function linkLabel(){
+  if(status.link==="pairing")return t("linkPairing");
+  return status.bridge?`${status.used}/${status.total}`:t("offline");
+}
+function paintStatus(){
+  $("#dotLink").className="dot "+linkDotClass();
+  $("#linkTxt").textContent=linkLabel();
+  $("#netTxt").textContent=status.portal?t("portal"):(status.ssid||"—");
+  $("#ipTxt").textContent=status.ip||"—";
+  if(status.brand)$("#brand").textContent=status.brand;
+
+  const slots=status.bridge?`${status.used}/${status.total}`:"—", up=status.uptime||0;
+  set(".wSlots",slots);
+  set(".wUp",`${Math.floor(up/3600)} h ${Math.floor(up%3600/60)} min · ${Math.round((status.heap||0)/1024)} KB free`);
+  set(".wNrf",linkLabel());
+  set(".wNet",status.portal?t("portal"):(status.ssid||"—"));
+  set(".wIp",status.ip||"—");
+}
+const set=(sel,text)=>$$(sel).forEach(e=>e.textContent=text);
+
+/* Repaints values without rebuilding: rebuilding closes popups and throws away
+   whatever the user was in the middle of doing. */
+function repaint(){
+  devices.forEach(d=>{
+    set(`[data-v="${d.ep}"]`,shown(d));
+    if(partsOf(d.type)[0].ui==="toggle")
+      $$(`.tile[data-ep="${d.ep}"]`).forEach(tl=>tl.classList.toggle("on",!!d.value));
+  });
+  paintStatus();
+}
+
+/* ------------------------------------------------------------- dashboard */
+/* Blocks live on a 12-column grid and are placed by cell, so one can sit
+   anywhere and be any size. A narrow screen renders 6 or 4 columns: the layout
+   is scaled into that space and anything dragged there is scaled back on drop,
+   so there is one stored layout rather than one per screen size. */
+/* ROW is the height of one grid row. A two-row block has to hold a label, a
+   large value and a caption, which is what sets the floor. */
+const COLS=12, GAP=13, ROW=50;
+let editing=false, cols=COLS, views=[], saveT;
+const lazySave=()=>{clearTimeout(saveT);saveT=setTimeout(saveUi,600);};
+/* 12 columns on a desktop, 6 on a tablet, 2 on a phone. Going below 6 in
+   proportion would leave a quarter-width block about 80px wide, so a phone gets
+   halves and full widths only. */
+const colsFor=w=>w>=980?12:w>=620?6:2;
+
+/* default and smallest size of each kind of block, in cells */
+const WI={clock  :{d:[3,2],m:[2,2]}, weather:{d:[3,2],m:[2,2]}, custom :{d:[3,2],m:[2,2]},
+          bridge :{d:[3,2],m:[2,2]}, link   :{d:[3,2],m:[2,2]}, note   :{d:[3,2],m:[2,1]},
+          device :{d:[2,3],m:[2,2]}, devices:{d:[12,4],m:[2,2]}, pairing:{d:[6,4],m:[3,3]},
+          warnings:{d:[6,3],m:[3,2]}};
+const WN={clock:"wClock",weather:"wWeather",custom:"wCustom",bridge:"wBridge",link:"wLink",
+          note:"wNote",device:"wDevice",devices:"tDevices",pairing:"hPairing",
+          warnings:"wWarn"};
+
+/* The sections the panel used to have, hard-coded. Now they are only a starting
+   point: rename them, merge them into one, or throw them away. */
+const defHome=()=>[
+  {n:t("hStatus"),w:[{t:"clock",x:0,y:0,w:3,h:2},{t:"weather",x:3,y:0,w:3,h:2},
+                     {t:"custom",x:6,y:0,w:3,h:2},{t:"bridge",x:9,y:0,w:3,h:2}]},
+  {n:t("hPinned"),w:[{t:"devices",m:"pin",x:0,y:0,w:12,h:4}]},
+  {n:t("hPairing"),w:[{t:"pairing",x:0,y:0,w:6,h:4}]}];
+/* Every block carries an id, because two weather blocks are two independent
+   things with their own coordinates and their own fetched value. */
+const uid=()=>Math.random().toString(36).slice(2,9);
+function home(){
+  if(!ui.home||!ui.home.length)ui.home=defHome();
+  ui.home.forEach(s=>s.w.forEach(w=>{if(!w.i)w.i=uid();}));
+  return ui.home;
+}
+
+/* Overlap resolution. There is deliberately no gravity: a block stays on the row
+   you dropped it on, gaps and all. Pulling everything to the top is what made
+   dragging feel like it was fighting you - you could never put a block where you
+   wanted it, only where the packer allowed. The block you are holding wins, and
+   anything it lands on is pushed down out of the way. */
+const hit=(a,b)=>a!==b&&a.x<b.x+b.w&&b.x<a.x+a.w&&a.y<b.y+b.h&&b.y<a.y+a.h;
+function resolve(list,n,anchor){
+  const done=[];
+  if(anchor){
+    anchor.w=Math.min(anchor.w,n); anchor.x=Math.max(0,Math.min(anchor.x,n-anchor.w));
+    done.push(anchor);
+  }
+  list.slice().sort((a,b)=>a.y-b.y||a.x-b.x).forEach(w=>{
+    if(w===anchor)return;
+    w.w=Math.min(w.w,n); w.x=Math.max(0,Math.min(w.x,n-w.w));
+    while(done.some(o=>hit(w,o)))w.y++;
+    done.push(w);
+  });
+}
+/* view = the stored layout squeezed into the columns actually on screen. A block
+   that took half the grid or more takes the whole row once the grid shrinks -
+   the pairing block at half of two columns would be unreadable. */
+function viewOf(sec){
+  const k=COLS/cols;
+  const v=sec.w.map(s=>({s,x:Math.round(s.x/k),y:s.y,h:s.h,
+    w:cols===COLS?s.w:(s.w>=COLS/2?cols:Math.max(1,Math.min(cols,Math.round(s.w/k))))}));
+  /* On a reduced grid the stored column is meaningless - three blocks that sat
+     at 3, 6 and 9 would all land in the same narrow column and stack up with a
+     hole beside them. Reading order and a first-fit pass give a tidy wall. */
+  cols===COLS?resolve(v,cols):pack(v,cols);
+  v.forEach(q=>{q.x0=q.x;q.w0=q.w;});   /* what the view started as */
+  return v;
+}
+function pack(list,n){
+  const done=[];
+  list.slice().sort((a,b)=>a.y-b.y||a.x-b.x).forEach(w=>{
+    w.w=Math.min(w.w,n);
+    for(let y=0,put=false;!put;y++)
+      for(let x=0;x+w.w<=n;x++)
+        if(!done.some(o=>hit({x,y,w:w.w,h:w.h},o))){w.x=x;w.y=y;put=true;break;}
+    done.push(w);
+  });
+}
+/* Only what actually changed is scaled back up. Without that, opening the page
+   on a phone and nudging one block would rewrite every other block's width. */
+function commit(si){
+  const k=COLS/cols;
+  views[si].forEach(v=>{
+    if(v.w!==v.w0)v.s.w=Math.max(1,Math.min(COLS,Math.round(v.w*k)));
+    if(v.x!==v.x0)v.s.x=Math.round(v.x*k);
+    v.s.x=Math.max(0,Math.min(COLS-v.s.w,v.s.x));
+    v.s.y=v.y; v.s.h=v.h;
+  });
+}
+const place=(el,v)=>{
+  el.style.gridColumn=`${v.x+1}/span ${v.w}`;
+  el.style.gridRow=`${v.y+1}/span ${v.h}`;
+  el.classList.toggle("tiny",v.w/cols<.25);
+};
+
+/* A block's own name wins over the type's default label. */
+const lab=(w,k)=>`<div class="wlab">${esc(w.n||t(k))}</div>`;
+function wBody(w){
+  switch(w.t){
+  case "clock":   return lab(w,"wClock")+
+                    `<div class="wbig" data-c="${w.i}">--:--</div>
+                     <div class="wsub" data-cd="${w.i}"></div>`;
+  case "weather": return lab(w,"wWeather")+
+                    `<div class="wbig" data-f="${w.i}">—</div>
+                     <div class="wsub" data-fs="${w.i}"></div>`;
+  case "custom":  return lab(w,"wCustom")+
+                    `<div class="wbig" data-f="${w.i}">—</div>
+                     <div class="wsub" data-fs="${w.i}"></div>`;
+  case "bridge":  return lab(w,"wBridge")+`<div class="wbig wSlots">—</div><div class="wsub wUp"></div>`;
+  case "link":    return lab(w,"wLink")+`<div class="wbig wNrf">—</div>
+                    <div class="wsub"><span class="wNet"></span> · <span class="wIp"></span></div>`;
+  case "note":    return `<div class="wnote">${esc(w.s||"")}</div>`;
+  case "device":{
+    const d=devices.find(x=>x.ep===w.ep);
+    if(!d)return lab(w,"wDevice")+`<div class="wsub">EP${w.ep} —</div>`;
+    return `<div class="ico">${icon(d.type)}</div><div class="tname">${esc(d.name)}</div>
+      <div class="tsub">${esc(typeLabel(d.type))} · EP${d.ep}</div>
+      <div class="tval" data-v="${d.ep}">${esc(shown(d))}</div>`;
+  }
+  case "devices":{
+    const list=ordered(devices).filter(d=>w.m==="all"||pinned(d.ep));
+    return list.length?`<div class="grid">${list.map(tile).join("")}</div>`
+                      :`<div class="empty">${t(w.m==="all"?"dNone":"hNoPins")}</div>`;
+  }
+  case "warnings": return `<div class="warnBox"></div>`;
+
+  case "pairing": return `<div class="qrBox"></div>
+    <div class="code pairCode">—</div>
+    <div class="note" style="text-align:center">${t("hPairHint")}</div>
+    <label>${t("hPayload")}</label><input class="mono pairQr" readonly>
+    <div class="btns"><button class="ghost" onclick="copyPair()">${t("bCopy")}</button>
+      <button class="ghost" onclick="loadPairing()">${t("bRefresh")}</button></div>`;
+  }
+  return "";
+}
+
+const SVG_UP='<svg viewBox="0 0 24 24"><path d="M12 19V5M5 12l7-7 7 7"/></svg>';
+const SVG_DN='<svg viewBox="0 0 24 24"><path d="M12 5v14M19 12l-7 7-7-7"/></svg>';
+const SVG_RM='<svg viewBox="0 0 24 24"><path d="M4 7h16M18 7v13a1.8 1.8 0 0 1-1.8 1.8H7.8A1.8 1.8 0 0 1 6 20V7"/><path d="M9.5 7V4.8A1.8 1.8 0 0 1 11.3 3h1.4a1.8 1.8 0 0 1 1.8 1.8V7"/></svg>';
+
+function wHtml(w,si,wi){
+  const d=w.t==="device"?devices.find(x=>x.ep===w.ep):null;
+  const on=d&&partsOf(d.type)[0].ui==="toggle"&&d.value;
+  const act=d&&!isSensor(d)&&!isImu(d);
+  return `<div class="w ${w.t==="devices"||w.t==="pairing"?"scr":""} ${on?"on":""} ${act?"act":""}"
+    data-s="${si}" data-i="${wi}" ${act?`onclick="if(!editing)tap(${w.ep})"`:""}>
+    ${wBody(w)}
+    <button class="wg" onclick="event.stopPropagation();openW(${si},${wi})">
+      <svg viewBox="0 0 24 24"><path d="M3 7h6M15 7h6M3 17h10M19 17h2"/>
+        <circle cx="12" cy="7" r="2.6"/><circle cx="16" cy="17" r="2.6"/></svg></button>
+    <button class="wx" onclick="event.stopPropagation();delW(${si},${wi})">✕</button>
+    <span class="wres"></span></div>`;
+}
+
+function secHtml(s,si){
+  const head=editing
+    ? `<div class="sechead">
+         <input value="${esc(s.n||"")}" placeholder="${t("hSecName")}"
+                oninput="renameSec(${si},this.value)">
+         <button class="sbtn" title="${t("hUp")}" onclick="moveSec(${si},-1)">${SVG_UP}</button>
+         <button class="sbtn" title="${t("hDown")}" onclick="moveSec(${si},1)">${SVG_DN}</button>
+         <button class="sbtn" title="${t("hDel")}" onclick="delSec(${si})">${SVG_RM}</button>
+         <span style="flex:1"></span>
+         <button class="sbtn wide" onclick="openAddW(${si})">+ ${t("hAddW")}</button>
+       </div>`
+    : (s.n?`<div class="sechead"><h2>${esc(s.n)}</h2></div>`:"");
+  const body=s.w.length
+    ? `<div class="wgrid" data-s="${si}">${s.w.map((w,wi)=>wHtml(w,si,wi)).join("")}</div>`
+    : `<div class="empty">${t("hNoBlocks")}</div>`;
+  return `<div class="sec">${head}${body}</div>`;
+}
+
+function renderHome(){
+  cols=colsFor(innerWidth);
+  const host=$("#homeWrap");
+  host.style.cssText=`--cols:${cols};--gap:${GAP}px;--row:${ROW}px`;
+  host.innerHTML=home().map(secHtml).join("")+
+    (editing?`<div class="editbar">
+       <button class="sbtn wide" onclick="addSec()">+ ${t("hAddS")}</button></div>`:"");
+  views=home().map(viewOf);
+  home().forEach((s,si)=>{
+    const g=host.querySelector(`.wgrid[data-s="${si}"]`);
+    if(g)views[si].forEach((v,wi)=>place(g.children[wi],v));
+  });
+  pollAll();          /* fetches only what is stale or brand new */
+  paintWidgets();
+}
+
+/* Fetched values, one entry per block id, so two weather blocks pointing at two
+   places do not overwrite each other. */
+let wv={}, wt={}, wx={pair:{}};
+function paintWidgets(){
+  tick();
+  $$("[data-f]").forEach(e=>{const v=wv[e.dataset.f]; e.textContent=v?v.v:"—";});
+  $$("[data-fs]").forEach(e=>{const v=wv[e.dataset.fs]; e.textContent=v?v.s:"";});
+  set(".pairCode",wx.pair.code||"—");
+  $$(".pairQr").forEach(e=>e.value=wx.pair.qr||"");
+  /* Encoding is cheap but this runs on every repaint, so only redraw when the
+   * payload itself changes - which is to say, almost never. */
+  if(wx.qrFor!==wx.pair.qr){
+    wx.qrFor=wx.pair.qr;
+    wx.qrSvg=wx.pair.qr?QR(wx.pair.qr):"";
+  }
+  $$(".qrBox").forEach(e=>{if(e.innerHTML!==wx.qrSvg)e.innerHTML=wx.qrSvg;});
+  paintStatus();
+}
+
+/* Walks a dotted JSON path, with [n] for array indexes. */
+function dig(v,path){
+  (path||"").split(".").filter(Boolean).forEach(k=>{
+    const m=/^(.*?)\[(\d+)\]$/.exec(k);
+    v=m?v[m[1]][+m[2]]:v[k];
+  });
+  return v;
+}
+
+/* Each clock renders itself: its own source, zone, 12/24 and seconds. A clock
+   fed by an API is not re-fetched every second - the answer is turned into an
+   offset from this device's clock once, and the block ticks on that. */
+function fmtClock(w,d,date){
+  const o=date?{weekday:"long",day:"numeric",month:"long"}
+              :{hour:"2-digit",minute:"2-digit",hour12:!!w.h12};
+  if(!date&&w.sec)o.second="2-digit";
+  if(w.tz)o.timeZone=w.tz;
+  try{return date?d.toLocaleDateString([],o):d.toLocaleTimeString([],o);}
+  catch(x){return date?"":t("hBadTz");}
+}
+function tick(){
+  const all={};
+  home().forEach(s=>s.w.forEach(w=>{if(w.t==="clock")all[w.i]=w;}));
+  const now=Date.now();
+  const at=w=>{
+    if(w.sr!=="api")return new Date(now);
+    const d=wv[w.i];
+    return d&&d.skew!==undefined?new Date(now+d.skew):null;
+  };
+  $$("[data-c]").forEach(e=>{
+    const w=all[e.dataset.c]||{}, d=wv[w.i];
+    if(w.sr==="api"&&(!d||d.v!==undefined)){e.textContent=d?d.v:"…";return;}
+    e.textContent=fmtClock(w,at(w));
+  });
+  $$("[data-cd]").forEach(e=>{
+    const w=all[e.dataset.cd]||{}, d=at(w);
+    if(w.dt===false||!d){e.textContent=(wv[w.i]&&wv[w.i].s)||w.tz||"";return;}
+    e.textContent=fmtClock(w,d,true)+(w.tz?" · "+w.tz:"");
+  });
+}
+/* An API that answers with a timestamp gives a clock that keeps running; one
+   that answers with a ready-made string is just shown as it came. */
+async function pollClock(w){
+  try{
+    const r=await fetch(w.u);
+    const v=w.rf==="text"?(await r.text()).trim():dig(await r.json(),w.p);
+    if(w.vf==="txt"){wv[w.i]={v:String(v),s:""};}
+    else{
+      const ms=w.vf==="unix"?+v*1000:w.vf==="ms"?+v:Date.parse(v);
+      if(!isFinite(ms))throw 0;
+      wv[w.i]={skew:ms-Date.now(),s:""};
+    }
+  }catch(e){wv[w.i]={v:"—",s:"fetch failed (CORS?)"};}
+  paintWidgets();
+}
+
+/* Fetched by the browser, not the bridge: the phone showing this page already
+   has internet, and the hub has better things to do than proxy a forecast. */
+async function pollWeather(w){
+  if(w.sr==="api")return pollApi(w);
+  const la=w.la||"52.86", lo=w.lo||"8.58", f=w.un==="f";
+  try{
+    const r=await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${la}&longitude=${lo}`+
+      `&current=temperature_2m${f?"&temperature_unit=fahrenheit":""}`);
+    const j=await r.json();
+    wv[w.i]={v:j.current.temperature_2m+(f?" °F":" °C"),s:`${la}, ${lo}`};
+  }catch(e){wv[w.i]={v:"—",s:"offline"};}
+  paintWidgets();
+}
+/* Weather from somewhere else - your own station, or a service Open-Meteo does
+   not cover. Same reading machinery as the custom block, plus a second path for
+   the caption, which is usually where the place name lives. */
+async function pollApi(w){
+  try{
+    const r=await fetch(w.u);
+    let v,s="";
+    if(w.rf==="text"){v=(await r.text()).trim();}
+    else{const j=await r.json(); v=dig(j,w.p); if(w.p2)s=String(dig(j,w.p2)??"");}
+    wv[w.i]={v:fmtCustom(w,v),s:s||(w.n?"":w.p||w.u)};
+  }catch(e){wv[w.i]={v:"—",s:"fetch failed (CORS?)"};}
+  paintWidgets();
+}
+
+/* Custom value. Each block has its own URL, its own way of reading the answer
+   and its own idea of what the number means. */
+async function pollCustom(w){
+  if(!w.u){wv[w.i]={v:"—",s:t("wCustHint")};paintWidgets();return;}
+  try{
+    const r=await fetch(w.u);
+    let v;
+    v=w.rf==="text"?(await r.text()).trim():dig(await r.json(),w.p);
+    wv[w.i]={v:fmtCustom(w,v),s:w.n?"":(w.p||w.u)};
+  }catch(e){wv[w.i]={v:"—",s:"fetch failed (CORS?)"};}
+  paintWidgets();
+}
+function fmtCustom(w,v){
+  if(v===undefined||v===null||typeof v==="object")return "—";
+  const suf=w.sf?" "+w.sf:"";
+  if(w.k==="bool")return (v&&v!=="0"&&v!=="false"?t("on"):t("off"))+suf;
+  if(w.k==="txt")return String(v)+suf;
+  const n=parseFloat(v)*(parseFloat(w.f)||1);
+  if(!isFinite(n))return String(v)+suf;
+  return n.toFixed(w.dc===undefined?1:+w.dc)+suf;
+}
+/* Polling is driven off the blocks themselves; each keeps its own interval. */
+function pollAll(force){
+  home().forEach(s=>s.w.forEach(w=>{
+    const fn=w.t==="weather"?pollWeather:w.t==="custom"?pollCustom
+            :(w.t==="clock"&&w.sr==="api")?pollClock:null;
+    if(!fn)return;
+    const iv=Math.max(10,+w.iv||600)*1000;
+    if(!force&&wt[w.i]&&Date.now()-wt[w.i]<iv)return;
+    wt[w.i]=Date.now();
+    fn(w);
+  }));
+}
+
+/* ------------------------------------------------------------ edit mode */
+function setEdit(on){
+  editing=on;
+  document.body.classList.toggle("edit",on);
+  $("#editBtn").classList.toggle("on",on);
+  $("#editBtn").title=t(on?"bDone":"hEdit");
+  renderHome();
+  if(!on)saveUi();
+}
+function addSec(){home().push({n:"",w:[]});renderHome();saveUi();}
+function delSec(si){if(!confirm(t("hDelSec")))return;home().splice(si,1);renderHome();saveUi();}
+function moveSec(si,d){
+  const h=home(),j=si+d; if(j<0||j>=h.length)return;
+  [h[si],h[j]]=[h[j],h[si]]; renderHome(); saveUi();
+}
+function renameSec(si,v){home()[si].n=v;lazySave();}
+function delW(si,wi){home()[si].w.splice(wi,1);renderHome();saveUi();}
+
+/* Adding a block only asks what kind. Everything else is the block's own
+   settings screen, which opens straight afterwards for the kinds that have any. */
+function openAddW(si){
+  const opts=Object.keys(WI).map(k=>`<option value="${k}">${esc(t(WN[k]))}</option>`).join("");
+  showModal(head(t("hAddW"))+
+   `<label>${t("type")}</label><select id="awType">${opts}</select>
+    <div class="btns"><button class="act" onclick="doAddW(${si})">${t("bAdd")}</button>
+      <button class="ghost" onclick="closeModal()">${t("bClose")}</button></div>`);
+}
+const CFG={clock:1,weather:1,custom:1,note:1,device:1,devices:1};
+function doAddW(si){
+  const k=$("#awType").value, s=home()[si], d=WI[k].d;
+  const w={i:uid(),t:k,x:0,y:s.w.reduce((m,q)=>Math.max(m,q.y+q.h),0),w:d[0],h:d[1]};
+  if(k==="device"&&devices.length)w.ep=ordered(devices)[0].ep;
+  if(k==="devices")w.m="pin";
+  s.w.push(w); saveUi(); closeModal(); renderHome();
+  if(CFG[k])openW(si,s.w.length-1);
+}
+
+/* One settings screen per block. Two weather blocks, two sets of coordinates. */
+const fld=(id,lbl,val,ph)=>`<label>${lbl}</label>
+  <input id="${id}" value="${esc(val??"")}" placeholder="${esc(ph||"")}">`;
+const chk=(id,lbl,on)=>`<div class="chk"><input type="checkbox" id="${id}" ${on?"checked":""}>
+  <span>${lbl}</span></div>`;
+const opt=(v,lbl,cur)=>`<option value="${v}"${v===cur?" selected":""}>${lbl}</option>`;
+
+function openW(si,wi){
+  const w=home()[si].w[wi]; if(!w)return;
+  let b=fld("wfN",t("hName"),w.n,t(WN[w.t]));
+  if(w.t==="clock")
+    b+=`<label>${t("source")}</label><select id="wfSr" onchange="wfSrc()">
+          ${opt("dev",t("hDev"),w.sr||"dev")}${opt("api",t("fromApi"),w.sr||"dev")}</select>
+        <div id="wfApi">`+
+          fld("wfU",t("url"),w.u,"https://worldtimeapi.org/api/timezone/Etc/UTC")+
+          `<label>${t("hResp")}</label><select id="wfRf">
+             ${opt("json",t("hJson"),w.rf||"json")}${opt("text",t("hPlain"),w.rf||"json")}</select>`+
+          fld("wfPath",t("hPath"),w.p,"datetime")+
+          `<label>${t("hVal")}</label><select id="wfVf">
+             ${opt("iso",t("hIso"),w.vf||"iso")}${opt("unix",t("hUnix"),w.vf||"iso")}
+             ${opt("ms",t("hMs"),w.vf||"iso")}${opt("txt",t("hTxt"),w.vf||"iso")}</select>`+
+          fld("wfIv",t("poll"),w.iv,"600")+
+        `</div>`+
+       fld("wfTz",t("hTz"),w.tz,"Europe/Berlin")+
+       chk("wf24",t("h24"),!w.h12)+chk("wfSec",t("hSec"),w.sec)+
+       chk("wfDt",t("hDate"),w.dt!==false);
+  if(w.t==="weather")
+    b+=`<label>${t("source")}</label><select id="wfSr" onchange="wfSrc()">
+          ${opt("om",t("hOm"),w.sr||"om")}${opt("api",t("fromApi"),w.sr||"om")}</select>
+        <div id="wfGeo">
+          <div class="row"><div>${fld("wfLa",t("sLat"),w.la,"52.86")}</div>
+          <div>${fld("wfLo",t("sLon"),w.lo,"8.58")}</div></div>
+          <label>${t("hUnit")}</label><select id="wfUn">
+            ${opt("c","°C",w.un||"c")}${opt("f","°F",w.un||"c")}</select>
+        </div>
+        <div id="wfApi">`+
+          fld("wfU",t("url"),w.u,"https://...")+
+          `<label>${t("hResp")}</label><select id="wfRf">
+             ${opt("json",t("hJson"),w.rf||"json")}${opt("text",t("hPlain"),w.rf||"json")}</select>`+
+          fld("wfPath",t("hPath"),w.p,"current.temperature_2m")+
+          fld("wfP2",t("hSub"),w.p2,"")+
+          `<div class="row"><div>${fld("wfDc",t("hDec"),w.dc,"1")}</div>
+           <div>${fld("wfSf",t("hSuf"),w.sf,"°C")}</div></div>
+        </div>`+
+       fld("wfIv",t("poll"),w.iv,"600");
+  if(w.t==="custom")
+    b+=fld("wfU",t("url"),w.u,"https://...")+
+       `<label>${t("hResp")}</label><select id="wfRf" onchange="wfResp()">
+          ${opt("json",t("hJson"),w.rf||"json")}${opt("text",t("hPlain"),w.rf||"json")}</select>
+        <div id="wfP">${fld("wfPath",t("hPath"),w.p,"current.temperature_2m")}</div>
+        <label>${t("hKind")}</label><select id="wfK" onchange="wfKind()">
+          ${opt("num",t("hNum"),w.k||"num")}${opt("txt",t("hTxt"),w.k||"num")}
+          ${opt("bool",t("hBool"),w.k||"num")}</select>
+        <div id="wfNum" class="row">
+          <div>${fld("wfF",t("scale"),w.f,"1")}</div>
+          <div>${fld("wfDc",t("hDec"),w.dc,"1")}</div></div>`+
+       `<div class="row"><div>${fld("wfSf",t("hSuf"),w.sf,"°C")}</div>
+        <div>${fld("wfIv",t("poll"),w.iv,"600")}</div></div>`;
+  if(w.t==="note")
+    b+=`<label>${t("wText")}</label><textarea id="wfS" rows="3">${esc(w.s||"")}</textarea>`;
+  if(w.t==="device")
+    b+=`<label>${t("wDevice")}</label><select id="wfEp">`+
+       ordered(devices).map(d=>opt(d.ep,esc(d.name)+" · EP"+d.ep,w.ep)).join("")+`</select>`+
+       (devices.length?"":`<div class="note">${t("dNone")}</div>`);
+  if(w.t==="devices")
+    b+=`<label>${t("hShow")}</label><select id="wfM">
+        ${opt("pin",t("hPins"),w.m||"pin")}${opt("all",t("hAllDev"),w.m||"pin")}</select>`;
+
+  showModal(head(t("settings"),t(WN[w.t]))+b+
+   `<div class="btns"><button class="act" onclick="saveW(${si},${wi})">${t("bApply")}</button>
+      <button class="ghost" onclick="closeModal()">${t("bClose")}</button></div>`);
+  if(w.t==="custom"){wfResp();wfKind();}
+  if(w.t==="clock"||w.t==="weather")wfSrc();
+}
+function wfResp(){$("#wfP").style.display=$("#wfRf").value==="text"?"none":"block";}
+function wfKind(){$("#wfNum").style.display=$("#wfK").value==="num"?"flex":"none";}
+function wfSrc(){
+  const api=$("#wfSr").value==="api", a=$("#wfApi"), g=$("#wfGeo");
+  if(a)a.style.display=api?"block":"none";
+  if(g)g.style.display=api?"none":"block";
+}
+
+function saveW(si,wi){
+  const w=home()[si].w[wi], v=id=>{const e=$("#"+id);return e?e.value.trim():undefined;};
+  const on=id=>{const e=$("#"+id);return e?e.checked:undefined;};
+  w.n=v("wfN")||undefined;
+  if(w.t==="clock"){
+    w.sr=$("#wfSr").value; w.tz=v("wfTz")||undefined;
+    w.h12=!on("wf24"); w.sec=on("wfSec"); w.dt=on("wfDt");
+    if(w.sr==="api"){w.u=v("wfU")||undefined;w.rf=$("#wfRf").value;
+                     w.p=v("wfPath")||undefined;w.vf=$("#wfVf").value;w.iv=+v("wfIv")||undefined;}
+  }
+  if(w.t==="weather"){
+    w.sr=$("#wfSr").value; w.iv=+v("wfIv")||undefined;
+    if(w.sr==="api"){w.u=v("wfU")||undefined;w.rf=$("#wfRf").value;
+                     w.p=v("wfPath")||undefined;w.p2=v("wfP2")||undefined;
+                     w.dc=v("wfDc")===""?undefined:+v("wfDc");w.sf=v("wfSf")||undefined;}
+    else{w.la=v("wfLa")||undefined;w.lo=v("wfLo")||undefined;w.un=$("#wfUn").value;}
+  }
+  if(w.t==="custom"){w.u=v("wfU")||undefined;w.rf=$("#wfRf").value;w.p=v("wfPath")||undefined;
+                     w.k=$("#wfK").value;w.f=v("wfF")||undefined;
+                     w.dc=v("wfDc")===""?undefined:+v("wfDc");
+                     w.sf=v("wfSf")||undefined;w.iv=+v("wfIv")||undefined;}
+  if(w.t==="note")w.s=$("#wfS").value;
+  if(w.t==="device"&&$("#wfEp"))w.ep=+$("#wfEp").value;
+  if(w.t==="devices")w.m=$("#wfM").value;
+  /* Settings changed: refetch now rather than in ten minutes, and drop the old
+     answer so switching source does not leave the previous one on screen. */
+  delete wt[w.i]; delete wv[w.i];
+  saveUi(); closeModal(); renderHome();
+}
+
+/* Move and resize. One pointer handler for both; the corner picks which.
+
+   The block being dragged leaves the grid and follows the pointer pixel for
+   pixel; a ghost shows the cell it would land on. Snapping the block itself to
+   whole cells is what felt broken - the thing under your finger lagged behind it
+   and jumped. Blocks that get pushed out of the way slide, using FLIP, because
+   grid-row is not an animatable property. */
+function flip(g,fn){
+  const kids=[...g.children].filter(k=>!k.classList.contains("dragging")&&
+                                       !k.classList.contains("wph"));
+  const was=kids.map(k=>k.getBoundingClientRect());
+  fn();
+  kids.forEach((k,i)=>{
+    const dy=was[i].top-k.getBoundingClientRect().top;
+    if(!dy)return;
+    k.style.transition="none"; k.style.transform=`translateY(${dy}px)`;
+    requestAnimationFrame(()=>{k.style.transition="";k.style.transform="";});
+  });
+}
+
+function dragStart(e){
+  if(!editing)return;
+  const el=e.target.closest(".w"); if(!el||e.target.closest(".wx")||e.target.closest(".wg"))return;
+  const si=+el.dataset.s, wi=+el.dataset.i, list=views[si], v=list[wi], g=el.parentElement;
+  const r=g.getBoundingClientRect(), er=el.getBoundingClientRect();
+  const cw=(r.width-GAP*(cols-1))/cols, cx=cw+GAP, cy=ROW+GAP;
+  const size=!!e.target.closest(".wres"), min=WI[v.s.t].m;
+  const sx=e.clientX, sy=e.clientY;
+  /* Where everything sat before the drag. Restored on every move, so pushing a
+     block aside and moving away again puts it back instead of stacking pushes. */
+  const home0=list.map(q=>({q,x:q.x,y:q.y,w:q.w,h:q.h}));
+
+  const ph=document.createElement("div");
+  ph.className="wph"; place(ph,v); g.appendChild(ph);
+
+  el.classList.add("dragging");
+  /* An absolutely positioned grid child that still has a definite grid position
+     is laid out against its own grid area, not against the grid. Leaving the
+     placement on would apply the offset twice and throw the block to the right,
+     the further right it started the worse. */
+  el.style.gridArea="auto";
+  el.style.width=er.width+"px"; el.style.height=er.height+"px";
+  el.style.left=(er.left-r.left)+"px"; el.style.top=(er.top-r.top)+"px";
+  el.setPointerCapture(e.pointerId);
+
+  const move=ev=>{
+    const dx=ev.clientX-sx, dy=ev.clientY-sy;
+    let nx=v.x,ny=v.y,nw=v.w,nh=v.h;
+    if(size){
+      el.style.width=Math.max(cw,er.width+dx)+"px";
+      el.style.height=Math.max(ROW,er.height+dy)+"px";
+      nw=Math.max(Math.min(min[0],cols),Math.min(cols-v.x,Math.round((er.width+dx+GAP)/cx)));
+      nh=Math.max(min[1],Math.round((er.height+dy+GAP)/cy));
+    }else{
+      el.style.transform=`translate(${dx}px,${dy}px)`;
+      nx=Math.max(0,Math.min(cols-v.w,Math.round((er.left-r.left+dx)/cx)));
+      ny=Math.max(0,Math.round((er.top-r.top+dy)/cy));
+    }
+    if(nx===v.x&&ny===v.y&&nw===v.w&&nh===v.h){ev.preventDefault();return;}
+    flip(g,()=>{
+      home0.forEach(o=>{o.q.x=o.x;o.q.y=o.y;o.q.w=o.w;o.q.h=o.h;});
+      v.x=nx; v.y=ny; v.w=nw; v.h=nh;
+      resolve(list,cols,v);
+      list.forEach((q,i)=>{if(g.children[i]!==el)place(g.children[i],q);});
+      place(ph,v);
+    });
+    ev.preventDefault();
+  };
+  const up=()=>{
+    el.classList.remove("dragging");
+    el.style.cssText=""; ph.remove();
+    place(el,v);
+    el.removeEventListener("pointermove",move);
+    el.removeEventListener("pointerup",up);
+    el.removeEventListener("pointercancel",up);
+    commit(si); saveUi();
+  };
+  el.addEventListener("pointermove",move);
+  el.addEventListener("pointerup",up);
+  el.addEventListener("pointercancel",up);
+  e.preventDefault();
+}
+
+const sameSet=(a,b)=>a.length===b.length&&
+  a.every((d,i)=>d.ep===b[i].ep&&d.type===b[i].type&&d.name===b[i].name);
+
+let refreshFails=0;
+async function refresh(){
+  try{
+    status=await api("/api/status");
+  }catch(e){
+    /* The origin this page loaded from stopped answering - Wi-Fi drop,
+     * portal fallback, or it moved. Give it a few misses before chasing the
+     * hostname, so one dropped packet does not trigger a redirect. */
+    if(++refreshFails>=3)chaseHost();
+    return;
+  }
+  refreshFails=0;
+  chaseStop(); /* the origin is fine after all - stop hunting for another one */
+  paintAccount();
+  loadWarnings();
+  const fresh=(await api("/api/devices")).devices||[];
+  const structural=!sameSet(fresh,devices);
+  devices=fresh;
+  structural?render():repaint();
+}
+
+/* ----------------------------------------------------------- interaction */
+async function tap(ep){
+  const d=devices.find(x=>x.ep===ep); if(!d)return;
+  const parts=partsOf(d.type);
+  if(parts.length===1&&parts[0].ui==="toggle"){
+    const prev=d.value;
+    d.value=d.value?0:1; d.has=true;
+    repaint();
+    const out=await cmd(`set ${ep} ${d.value}`);
+    /* Refused (no control permission, board offline, whatever): the toast
+       already said why, but the switch itself should not sit flipped for up
+       to 8s until the next poll quietly puts it back. */
+    if(out&&out.startsWith("⚠")){d.value=prev;repaint();}
+    return;
+  }
+  openControl(ep);
+}
+
+/* ---------------------------------------------------------------- modals */
+function showModal(html){$("#mBox").innerHTML=html;$("#mBack").classList.add("open");}
+function closeModal(){$("#mBack").classList.remove("open");refresh();}
+
+function head(title,sub){
+  return `<div class="mhead"><div><h3>${esc(title)}</h3>
+    ${sub?`<div class="note">${esc(sub)}</div>`:""}</div>
+    <button class="x" onclick="closeModal()">×</button></div>`;
+}
+
+/* The control popup: one block per part of the kind. */
+function openControl(ep){
+  const d=devices.find(x=>x.ep===ep); if(!d)return;
+  const parts=partsOf(d.type);
+  const vals=[d.value,d.v2,d.v3];
+  let body="";
+  const voc=VOC[d.type]&&t(VOC[d.type]);
+  parts.forEach((p,i)=>{
+    const v=vals[i]??0, id="c"+i;
+    /* sendControl is told which control moved: turning a dimmer off from the
+       switch must not be undone by the brightness rule, and vice versa. */
+    if(p.ui==="toggle"){
+      const words=n=>voc?(voc[n]||voc[0]):(n?t("on"):t("off"));
+      body+=`<div class="swrow"><label class="sw"><input type="checkbox" id="${id}" ${v?"checked":""}
+        onchange="sendControl(${ep},${i})"><span class="sl"></span></label>
+        <b id="l${i}">${esc(words(v))}</b></div>`;
+    } else if(p.ui==="slider"){
+      body+=`<label>${t(p.lbl||"value")}</label><div class="vrow">
+        <input type="range" id="r${i}" min="${p.min}" max="${p.max}" step="${p.step}" value="${toUi(p,v)}"
+          oninput="document.getElementById('${id}').value=this.value" onchange="sendControl(${ep},${i})">
+        <input type="number" id="${id}" min="${p.min}" max="${p.max}" step="${p.step}" value="${toUi(p,v)}"
+          oninput="document.getElementById('r${i}').value=this.value" onchange="sendControl(${ep},${i})">
+        <span class="unit">${p.unit}</span></div>`;
+    } else if(p.ui==="pick"){
+      const words=t(p.voc)||[];
+      body+=`<label>${t(p.lbl||"value")}</label>
+        <select id="${id}" onchange="sendControl(${ep},${i})">`+
+        words.map((s,n)=>s?`<option value="${n}"${n===v?" selected":""}>${esc(s)}</option>`:"").join("")+
+        `</select>`;
+    } else {
+      body+=`<label>${t(p.lbl||"value")}</label><div class="vrow">
+        <input type="number" id="${id}" step="${p.step}" value="${toUi(p,v)}">
+        <span class="unit">${p.unit}</span>
+        <button class="act" style="flex:0 0 auto" onclick="sendControl(${ep},${i})">${t("bApply")}</button></div>`;
+    }
+  });
+  showModal(head(d.name,typeLabel(d.type)+" · EP"+d.ep)+body+
+    `<div class="btns"><button class="ghost" onclick="openDevice(${ep})">${t("settings")}</button>
+     <button class="act" onclick="closeModal()">${t("bClose")}</button></div>`);
+}
+
+async function sendControl(ep,which){
+  const d=devices.find(x=>x.ep===ep); if(!d)return;
+  const parts=partsOf(d.type), out=[];
+  parts.forEach((p,i)=>{
+    const el=document.getElementById("c"+i); if(!el)return;
+    out.push(p.ui==="toggle"?(el.checked?1:0):toRaw(p,el.value));
+  });
+  if(!out.length)return;
+
+  /* A dimmer at zero brightness is off, and dragging it back up turns it on.
+     Which control the user touched decides: pulling the switch down must not be
+     read as "still bright, so switch it back on". */
+  if(parts[0].ui==="toggle"&&parts[1]&&parts[1].pct){
+    if(which===1){
+      out[0]=out[1]>0?1:0;
+      const sw=document.getElementById("c0"); if(sw)sw.checked=!!out[0];
+    }else if(which===0&&out[0]&&!out[1]){
+      out[1]=254;                       /* switched on from zero: come up full */
+      const r=document.getElementById("r1"), n=document.getElementById("c1");
+      if(r)r.value=100; if(n)n.value=100;
+    }
+  }
+  /* Repaint the switch caption in this device's own vocabulary. */
+  parts.forEach((p,i)=>{
+    if(p.ui!=="toggle")return;
+    const lb=document.getElementById("l"+i); if(!lb)return;
+    const voc=VOC[d.type]&&t(VOC[d.type]);
+    lb.textContent=voc?(voc[out[i]]||voc[0]):(out[i]?t("on"):t("off"));
+  });
+
+  d.value=out[0]; if(out.length>1)d.v2=out[1]; if(out.length>2)d.v3=out[2];
+  d.has=true; repaint();
+  await cmd(`set ${ep} ${out.join(" ")}`);
+}
+
+/* Add: type, name and the notes that describe the physical thing. */
+function openAdd(){
+  const opts=types.map(x=>`<option value="${esc(x.slug)}">${esc(typeLabel(x.slug))}</option>`).join("");
+  showModal(head(t("add"))+
+   `<label>${t("type")}</label><select id="aType" onchange="addHint()">${opts}</select>
+    <div class="note" id="aHint" style="margin-top:6px"></div>
+    <label>${t("name")}</label><input id="aName" placeholder="Küche">
+    <div class="row">
+      <div><label>${t("maker")}</label><input id="aMaker"></div>
+      <div><label>${t("model")}</label><input id="aModel"></div>
+    </div>
+    <label>${t("serial")}</label><input id="aSerial">
+    <div class="btns"><button class="act" onclick="doAdd()">${t("bAdd")}</button>
+      <button class="ghost" onclick="closeModal()">${t("bClose")}</button></div>`);
+  addHint();
+}
+function addHint(){const x=typeOf($("#aType").value);$("#aHint").textContent=x.hint||"";}
+
+async function doAdd(){
+  const type=$("#aType").value, name=$("#aName").value.trim();
+  if(!name)return;
+  const out=await cmd(`add ${type} ${name}`);
+  const m=/EP(\d+)/.exec(out||"");
+  if(m){
+    setMeta(+m[1],{maker:$("#aMaker").value,model:$("#aModel").value,serial:$("#aSerial").value});
+    await saveUi();
+  }
+  $("#out").textContent=out;
+  closeModal();
+}
+
+/* Per-device settings: identity, data source, pinning, deletion. */
+function openDevice(ep){
+  const d=devices.find(x=>x.ep===ep); if(!d)return;
+  const m=meta(ep), b=d.bind, hasApi=!!b, imu=isImu(d);
+  const opts=types.map(x=>`<option value="${esc(x.slug)}"${x.slug===d.type?" selected":""}>${esc(typeLabel(x.slug))}</option>`).join("");
+  showModal(head(d.name,"EP"+d.ep)+
+   `<label>${t("name")}</label><input id="sName" value="${esc(d.name)}">
+    <label>${t("type")}</label><select id="sType">${opts}</select>
+    <div class="row">
+      <div><label>${t("maker")}</label><input id="sMaker" value="${esc(m.maker||"")}"></div>
+      <div><label>${t("model")}</label><input id="sModel" value="${esc(m.model||"")}"></div>
+    </div>
+    <label>${t("serial")}</label><input id="sSerial" value="${esc(m.serial||"")}">
+    <label>${t("rRoom")}</label><select id="sRoom">
+      <option value="">${t("rNone")}</option>
+      ${rooms().map(r=>`<option value="${r.i}"${r.i===roomOf(ep)?" selected":""}>${esc(r.n||t("rRoom"))}</option>`).join("")}
+    </select>
+    <div class="chk"><input type="checkbox" id="sPin" ${pinned(ep)?"checked":""}>
+      <span>${t("pin")}</span></div>
+    ${imu?`<div class="note">${t("imu")}</div>`:`
+    <label>${t("source")}</label>
+    <div class="seg">
+      <button class="${hasApi?"":"sel"}" onclick="pickSrc(0)">${t("manual")}</button>
+      <button class="${hasApi?"sel":""}" onclick="pickSrc(1)">${t("fromApi")}</button>
+    </div>
+    <div id="srcApi" style="display:${hasApi?"block":"none"}">
+      <label>${t("url")}</label><input id="sUrl" class="mono" value="${esc(hasApi?b.url:"")}"
+        placeholder="https://api.open-meteo.com/v1/forecast?latitude=52.86&longitude=8.58&current=temperature_2m">
+      <label>${t("path")}</label><input id="sPath" class="mono" value="${esc(hasApi?b.path:"")}"
+        placeholder="current.temperature_2m">
+      <div class="row">
+        <div><label>${t("scale")}</label><input id="sScale" value="${hasApi?b.scale:100}"></div>
+        <div><label>${t("poll")}</label><input id="sPoll" value="${hasApi?b.poll:300}"></div>
+      </div>
+      <div class="btns">
+        <button class="ghost" onclick="testSrc(${ep})">${t("bTest")}</button>
+        ${hasApi?`<button class="ghost" onclick="cmdAndClose('unbind ${ep}')">${t("bUnbind")}</button>`:""}
+      </div>
+      <pre class="out" id="sOut" style="margin-top:10px;display:none"></pre>
+    </div>`}
+    <div class="btns" style="border-top:1px solid var(--line);padding-top:15px">
+      <button class="act" onclick="saveDevice(${ep})">${t("bApply")}</button>
+      <button class="danger" onclick="removeDevice(${ep})">${t("bRemove")}</button>
+    </div>`);
+}
+function pickSrc(api){
+  document.querySelectorAll(".seg button").forEach((b,i)=>b.classList.toggle("sel",i===api));
+  $("#srcApi").style.display=api?"block":"none";
+}
+async function testSrc(ep){
+  const box=$("#sOut"); box.style.display="block"; box.textContent="…";
+  box.textContent=await cmd(`test ${$("#sUrl").value.trim()} ${$("#sPath").value.trim()}`);
+}
+async function cmdAndClose(c){$("#out").textContent=await cmd(c);closeModal();}
+
+async function saveDevice(ep){
+  const d=devices.find(x=>x.ep===ep); if(!d)return;
+  setMeta(ep,{maker:$("#sMaker").value,model:$("#sModel").value,serial:$("#sSerial").value,
+              room:$("#sRoom").value||undefined});
+  togglePin(ep,$("#sPin").checked);
+
+  let cur=ep,out="";
+  const name=$("#sName").value.trim(), type=$("#sType").value;
+  if(name&&name!==d.name){out=await cmd(`rename ${cur} ${name}`);
+    const m=/is now EP(\d+)/.exec(out||""); if(m){const n=+m[1];remapUi(cur,n);cur=n;}}
+  if(type!==d.type){out=await cmd(`retype ${cur} ${type}`);
+    const m=/is now EP(\d+)/.exec(out||""); if(m){remapUi(cur,+m[1]);cur=+m[1];}}
+
+  const url=$("#sUrl");
+  if(url&&$("#srcApi").style.display!=="none"&&url.value.trim()){
+    out=await cmd(`bind ${cur} ${url.value.trim()} ${$("#sPath").value.trim()||'""'} `+
+                  `${$("#sScale").value||1} ${$("#sPoll").value||300}`);
+  }
+  await saveUi();
+  $("#out").textContent=out||"";
+  closeModal();
+}
+/* Rename and retype recreate the endpoint under a new id; the notes, the pin
+   and the position have to follow it or they silently belong to nothing. */
+function remapUi(from,to){
+  if(ui.meta&&ui.meta[from]){ui.meta[to]=ui.meta[from];delete ui.meta[from];}
+  ui.pins=(ui.pins||[]).map(x=>x===from?to:x);
+  ui.order=(ui.order||[]).map(x=>x===from?to:x);
+}
+async function removeDevice(ep){
+  if(!confirm(t("cRemove")))return;
+  $("#out").textContent=await cmd("rm "+ep);
+  ui.pins=(ui.pins||[]).filter(x=>x!==ep);
+  ui.order=(ui.order||[]).filter(x=>x!==ep);
+  if(ui.meta)delete ui.meta[ep];
+  await saveUi();
+  closeModal();
+}
+
+/* ------------------------------------------------------------- reordering */
+function toggleOrder(){
+  ordering=!ordering;
+  $("#orderBtn").textContent=ordering?t("bDone"):t("bReorder");
+  $("#orderBtn").className=ordering?"act":"ghost";
+  render();
+  if(!ordering)saveUi();
+}
+/* Dragging works across rooms: the grid a tile is dropped into is the room it
+   joins, which is also how an empty room gets its first device. */
+function enableDrag(){
+  let dragged=null;
+  $$("#tiles .droom").forEach(host=>{
+    host.ondragover=e=>{
+      e.preventDefault();
+      if(!dragged)return;
+      const after=[...host.querySelectorAll(".tile")].find(el=>{
+        if(el===dragged)return false;
+        const r=el.getBoundingClientRect();
+        return e.clientY<r.bottom&&e.clientX<r.left+r.width/2;
+      });
+      if(after!==dragged)host.insertBefore(dragged,after||null);
+    };
+    host.querySelectorAll(".tile").forEach(el=>{
+      el.draggable=true;
+      el.ondragstart=()=>{dragged=el;};
+      el.ondragend=()=>{
+        dragged=null;
+        ui.order=[...$$("#tiles .tile")].map(x=>+x.dataset.ep);
+        $$("#tiles .droom").forEach(g=>g.querySelectorAll(".tile")
+          .forEach(x=>setRoom(+x.dataset.ep,g.dataset.room)));
+        saveUi();
+      };
+    });
+  });
+}
+
+/* -------------------------------------------------------------- console */
+async function run(text){
+  const line=text!==undefined?text:$("#cmdLine").value;
+  if(!line)return;
+  $("#out").textContent="…";
+  $("#out").textContent=(await cmd(line))||"(no output)";
+  if(text===undefined)$("#cmdLine").value="";
+  refresh();
+}
+async function ask(text,key){if(confirm(t(key))){go("console");await run(text);}}
+function go(tab){
+  $$("#tabs button").forEach(b=>b.classList.toggle("sel",b.dataset.tab===tab));
+  $$("main>section").forEach(s=>s.classList.toggle("sel",s.id===tab));
+  /* Layout editing belongs to Home only, and leaving Home ends it. */
+  $("#editWrap").style.display=tab==="home"?"":"none";
+  if(tab!=="home"&&editing)setEdit(false);
+  /* The card is only listed when someone is looking at it - a directory listing
+   * costs SD reads, and the panel polls often enough as it is. */
+  if(tab==="settings"){loadSd();loadLogging();loadHostname();}
+  moveThumb();
+}
+
+/* The thumb is the only thing that moves, so the labels never reflow. Its
+   transition is switched on after the first placement, or the page would open
+   with the thumb sliding in from the left. */
+let thumbAnim=false;
+function moveThumb(){
+  const nav=$("#tabs"), b=nav&&nav.querySelector("button.sel"), th=$("#thumb");
+  if(!b||!th)return;
+  const x=b.offsetLeft-nav.clientLeft;
+  th.style.width=b.offsetWidth+"px";
+  th.style.transform=`translateX(${x}px)`;
+  if(x<nav.scrollLeft) nav.scrollTo({left:x-4,behavior:"smooth"});
+  else if(x+b.offsetWidth>nav.scrollLeft+nav.clientWidth)
+    nav.scrollTo({left:x+b.offsetWidth-nav.clientWidth+4,behavior:"smooth"});
+  if(!thumbAnim){thumbAnim=true;requestAnimationFrame(()=>th.classList.add("anim"));}
+}
+addEventListener("resize",()=>{
+  moveThumb();
+  if(colsFor(innerWidth)!==cols)renderHome();
+});
+
+/* ---------------------------------------------------------------- wi-fi */
+/* Both fields are percent-encoded before they become a command line, because a
+ * command line splits on spaces and plenty of networks have them in their name.
+ * "iPhone 16 Pro Max" used to reach the board as ssid "iPhone" with the rest
+ * swallowed into the password, and the only symptom was a network that would
+ * not associate. */
+const wifiEsc=v=>encodeURIComponent(v).replace(/[!'()*]/g,c=>
+  "%"+c.charCodeAt(0).toString(16).toUpperCase());
+
+/* ---------------------------------------------------------------- hostname
+ * Comes back on /api/status already, so this just paints from the last
+ * refresh() - no round trip of its own needed to show the current value.
+ */
+function loadHostname(){
+  const h=status.hostname||"concordia";
+  $("#wHost").value=h;
+  $("#wHostHint").textContent=t("sHostnameHint")+" http://"+h+".local/";
+}
+async function hostnameSave(){
+  const name=$("#wHost").value.trim();
+  if(!name||name===status.hostname)return;
+  $("#out").textContent=await cmd(`hostname ${wifiEsc(name)}`);
+  status=await api("/api/status");
+  loadHostname();
+}
+
+/* ------------------------------------------------------------- mDNS chase
+ * A join can move the board to a different IP than the one this page was
+ * loaded from - and a lost-then-recovered board might come back on a
+ * different one too, portal AP included. Relative fetches on this page are
+ * pinned to whatever origin it loaded from, so neither case would ever
+ * recover on its own. Poll quietly for the hostname (mode:"no-cors" - a
+ * plain fetch would be blocked by CORS outright, but a no-cors one still
+ * rejects on a genuine network failure and resolves once the host answers,
+ * even though the response body is unreadable) and only navigate once it is
+ * actually there. Bounded, and cancellable - see refresh()'s success path,
+ * which clears this the instant the *original* origin turns out fine after
+ * all, so a brief blip does not end in a pointless redirect. */
+let chaseTimer=null;
+function chaseHost(){
+  if(chaseTimer)return; /* already chasing */
+  const host=(status&&status.hostname)||"concordia";
+  const url="http://"+host+".local/";
+  let tries=0;
+  const tick=()=>{
+    tries++;
+    fetch(url+"api/status",{mode:"no-cors",cache:"no-store"}).then(()=>{
+      location.href=url;
+    }).catch(()=>{
+      if(tries<40)chaseTimer=setTimeout(tick,3000); else chaseTimer=null;
+    });
+  };
+  chaseTimer=setTimeout(tick,3000);
+}
+function chaseStop(){
+  if(chaseTimer){clearTimeout(chaseTimer);chaseTimer=null;}
+}
+async function wifiReconnectNow(){
+  if(!confirm(t("cJoin")))return;
+  go("console");
+  await run("wifi join");
+  chaseHost();
+}
+
+/* Saved networks and scan results both come back as console text - there is
+ * no JSON endpoint for either - so these two parse the exact shape cmdWifi()
+ * in commands.cpp prints. One entry per line, so it has not needed to change:
+ *   list: "  0  MySSID"            scan: "  MySSID  (-42 dBm)"
+ */
+function parseWifiList(text){
+  const out=[];
+  (text||"").split("\n").forEach(line=>{
+    const m=line.match(/^\s*(\d+)\s+(.+)$/);
+    if(m)out.push({idx:+m[1],ssid:m[2]});
+  });
+  return out;
+}
+function parseWifiScan(text){
+  const out=[];
+  (text||"").split("\n").forEach(line=>{
+    const m=line.match(/^\s*(.+?)\s+\((-?\d+) dBm\)$/);
+    if(m)out.push({ssid:m[1],rssi:+m[2]});
+  });
+  return out;
+}
+
+let wifiSaved=[], wifiEditIdx=-1;
+
+/* Quiet: this runs on every boot for everyone, not just an admin looking at
+   Settings, and "you cannot see this" is not news worth a toast every time. */
+async function loadWifi(){
+  wifiSaved=parseWifiList(await cmd("wifi list",true));
+  $("#wifiTable tbody").innerHTML=wifiSaved.map(n=>`<tr>
+      <td>${esc(n.ssid)}</td>
+      <td style="white-space:nowrap">
+        <button class="ghost" data-act="editwifi" data-idx="${n.idx}">${esc(t("bEdit"))}</button>
+        <button class="danger" data-act="delwifi" data-idx="${n.idx}">${esc(t("bRemove"))}</button>
+      </td></tr>`).join("");
+  $("#wifiNone").style.display=wifiSaved.length?"none":"";
+}
+document.addEventListener("click",ev=>{
+  const b=ev.target.closest("#wifiTable button[data-act]");
+  if(!b)return;
+  const idx=+b.dataset.idx, n=wifiSaved.find(x=>x.idx===idx);
+  if(!n)return;
+  if(b.dataset.act==="delwifi")wifiDelete(idx);
+  if(b.dataset.act==="editwifi")wifiStartEdit(idx,n.ssid);
+});
+
+async function wifiDelete(idx){
+  if(!confirm(t("wDelConfirm")))return;
+  await cmd(`wifi del ${idx}`);
+  if(wifiEditIdx===idx)wifiCancelEdit();
+  loadWifi();
+}
+
+function wifiStartEdit(idx,ssid){
+  wifiEditIdx=idx;
+  $("#wSsid").value=ssid;
+  $("#wPass").value="";
+  $("#wifiEditHint").textContent=t("wEditing").replace("%s",ssid);
+  $("#wifiEditHint").style.display="";
+  $("#wCancelEdit").style.display="";
+  $("#wSsid").focus();
+}
+function wifiCancelEdit(){
+  wifiEditIdx=-1;
+  $("#wSsid").value=""; $("#wPass").value="";
+  $("#wifiEditHint").style.display="none";
+  $("#wCancelEdit").style.display="none";
+}
+
+async function wifiAdd(){
+  const s=$("#wSsid").value.trim(); if(!s)return;
+  /* Editing is forget-then-save: the firmware has no in-place update. The old
+     entry goes first - if the list is full and the new add is refused, a
+     stale entry under the name about to change is no better than none. */
+  if(wifiEditIdx>=0)await cmd(`wifi del ${wifiEditIdx}`,true);
+  $("#out").textContent=await cmd(`wifi add ${wifiEsc(s)} ${wifiEsc($("#wPass").value)}`);
+  wifiCancelEdit();
+  loadWifi();
+}
+
+async function wifiScan(){
+  $("#wifiScanResults").innerHTML=`<div class="note">${esc(t("wScanning"))}</div>`;
+  const found=parseWifiScan(await cmd("wifi scan",true));
+  if(!found.length){
+    $("#wifiScanResults").innerHTML=`<div class="note">${esc(t("wScanNone"))}</div>`;
+    return;
+  }
+  found.sort((a,b)=>b.rssi-a.rssi);
+  $("#wifiScanResults").innerHTML=`<div class="note">${esc(t("wScanTitle"))}</div>
+    <div class="scroll"><table><tbody>`+found.map(n=>`<tr>
+      <td>${esc(n.ssid)}</td><td class="note">${n.rssi} dBm</td>
+      <td><button class="ghost" data-act="pickwifi" data-ssid="${esc(n.ssid)}">${esc(t("bAdd"))}</button></td>
+    </tr>`).join("")+`</tbody></table></div>`;
+}
+document.addEventListener("click",ev=>{
+  const b=ev.target.closest("#wifiScanResults button[data-act='pickwifi']");
+  if(!b)return;
+  wifiCancelEdit();
+  $("#wSsid").value=b.dataset.ssid;
+  $("#wPass").focus();
+});
+
+/* ------------------------------------------------------------- logging
+ * Two independent dials. The level decides how much is worth keeping; the
+ * categories decide what. A level on its own is all-or-nothing, and turning the
+ * noise down is exactly how you lose the line you were watching for.
+ */
+const LOGLEVELS=["sLog0","sLog1","sLog2","sLog3","sLog4","sLog5"];
+
+async function loadLogging(){
+  try{
+    const d=await api("/api/logging");
+    $("#logLevel").innerHTML=LOGLEVELS.map((k,i)=>
+      `<option value="${i}"${i===d.level?" selected":""}>${i} — ${esc(t(k))}</option>`).join("");
+    $("#logCats").innerHTML=d.names.map((n,i)=>
+      `<div class="chk"><input type="checkbox" ${(d.cats>>i)&1?"checked":""}
+         onchange="logSave()"><span>${esc(n)}</span></div>`).join("");
+  }catch(e){}
+}
+
+async function logSave(){
+  let cats=0;
+  $$("#logCats input").forEach((e,i)=>{if(e.checked)cats|=1<<i;});
+  try{
+    await fetch("/api/logging",{method:"POST",
+      headers:{"X-Token":tok(),"Content-Type":"application/x-www-form-urlencoded"},
+      body:"level="+(+$("#logLevel").value)+"&cats="+cats});
+  }catch(e){}
+}
+
+/* ----------------------------------------------------------- warnings
+ * Things that went wrong and were survived: the link dropping and coming back,
+ * the internet going away, a token refused. The board keeps them on the card so
+ * they outlive a reboot, which is exactly when you want to read them.
+ *
+ * There is no clock on the board yet, so entries carry seconds since boot and a
+ * per-run id rather than a wall time that would be invented. Entries from the
+ * run that is happening now are marked apart from older ones.
+ */
+let warnRun=null;
+
+async function loadWarnings(){
+  if(!home().some(s=>s.w.some(w=>w.t==="warnings")))return;
+  try{
+    const d=await api("/api/warnings");
+    wx.warn=d.items||[];
+    /* The newest entry of the current run identifies it; anything with a
+     * different id happened before the last restart. */
+    warnRun=d.run??warnRun;
+    paintWarnings();
+  }catch(e){}
+}
+
+const warnAge=s=>s<90?s+"s":s<5400?Math.round(s/60)+"m":Math.round(s/3600)+"h";
+
+function paintWarnings(){
+  const items=wx.warn||[];
+  const body=items.length
+    ? items.map(w=>{
+        const old=warnRun!==null&&w.boot!==warnRun;
+        return `<div class="wrow ${w.sev}">
+          <b>${esc(w.src)}</b> ${esc(w.msg)}
+          ${w.detail?`<div class="note">${esc(w.detail)}</div>`:""}
+          <div class="note">${warnAge(w.up)} ${t(old?"wWarnBoot":"wWarnNow")}</div>
+        </div>`;
+      }).join("")
+    : `<div class="empty" style="text-align:center;font-size:1.3em">✓<br>
+       <span style="font-size:.7em">${t("wWarnNone")}</span></div>`;
+  const btn=items.length
+    ? `<div class="btns"><button class="ghost" onclick="clearWarnings()">${t("wWarnClear")}</button></div>`
+    : "";
+  $$(".warnBox").forEach(e=>{e.innerHTML=body+btn;});
+}
+
+async function clearWarnings(){
+  try{
+    await fetch("/api/warnings/clear",{method:"POST",headers:{"X-Token":tok()}});
+    wx.warn=[];
+    paintWarnings();
+  }catch(e){}
+}
+
+/* --------------------------------------------------------- storage card
+ * A file manager for the card, because everything the panel is made of now
+ * lives there. Open folders, read and edit files, rename, delete, download,
+ * upload - and drop a ZIP in to have it unpacked where you are standing.
+ *
+ * Every call carries the token. The board hands it out by itself only while no
+ * panel is installed, which is exactly when nobody could have typed it in yet;
+ * after that it is remembered here, and the copy of record is the file on the
+ * card. Nothing is stored in this browser but that one string.
+ */
+const TOK_KEY="concordia.token";
+const tok=()=>localStorage.getItem(TOK_KEY)||"";
+let fsCwd="/Concordia";
+
+function tokSave(){
+  localStorage.setItem(TOK_KEY,$("#sdTok").value.trim());
+  loadSd();
+}
+
+const fsSize=n=>n<1024?n+" B":n<1048576?(n/1024).toFixed(1)+" KB":(n/1048576).toFixed(1)+" MB";
+const fsMsg=m=>{$("#fsMsg").textContent=m||"";};
+
+async function fsCall(url,opts={}){
+  const o={...opts,headers:{...(opts.headers||{}),"X-Token":tok()}};
+  const r=await fetch(url,o);
+  const j=await r.json().catch(()=>({ok:false,error:"HTTP "+r.status}));
+  if(j.ok===false)throw new Error(j.error||"refused");
+  return j;
+}
+
+async function loadSd(){
+  try{
+    const d=await(await fetch("/api/sd")).json();
+    $("#sdInfo").textContent=d.ready
+      ? d.status+" — "+(d.page||t("sNoPanel"))
+      : d.status;
+    /* Bootstrap: take the token the board is still willing to give. */
+    if(d.token&&!tok()){localStorage.setItem(TOK_KEY,d.token);}
+    if(!$("#sdTok").value)$("#sdTok").value=tok();
+    const on=d.ready&&tok();
+    $("#sdBrowser").style.display=on?"":"none";
+    if(on)fsList(fsCwd);
+  }catch(e){$("#sdInfo").textContent="—";}
+}
+
+async function fsList(path){
+  try{
+    const d=await fsCall("/api/fs/list?path="+encodeURIComponent(path));
+    fsCwd=d.path;
+    $("#fsPath").textContent=d.path;
+    const rows=d.entries
+      .sort((a,b)=>(b.dir-a.dir)||a.name.localeCompare(b.name))
+      .map(e=>{
+        const p=fsCwd+"/"+e.name, a=`data-p="${esc(p)}"`;
+        const act=e.dir
+          ? `<button class="ghost" data-act="open" ${a}>${t("bOpen")}</button>`
+          : `<button class="ghost" data-act="edit" ${a}>${t("bEdit")}</button>
+             <button class="ghost" data-act="get" ${a}>${t("bDownload")}</button>`;
+        return `<tr><td>${e.dir?"▸":"·"} ${esc(e.name)}</td>
+          <td class="c">${e.dir?"":fsSize(e.size)}</td>
+          <td style="white-space:nowrap">${act}
+            <button class="ghost" data-act="ren" ${a}>${t("bRename")}</button>
+            <button class="danger" data-act="del" ${a}>${t("bRemove")}</button></td></tr>`;
+      }).join("");
+    $("#fsTable").querySelector("tbody").innerHTML=
+      rows||`<tr><td colspan="3" class="note">${t("sEmpty")}</td></tr>`;
+    fsMsg("");
+  }catch(e){fsMsg(e.message);}
+}
+
+/* Delegated, so a filename containing a quote cannot become markup. */
+document.addEventListener("click",ev=>{
+  const b=ev.target.closest("#fsTable button[data-act]");
+  if(!b)return;
+  ({open:fsList,edit:fsEdit,get:fsGet,ren:fsRename,del:fsDelete})[b.dataset.act](b.dataset.p);
+});
+
+function fsUp(){
+  if(fsCwd==="/Concordia")return;
+  fsList(fsCwd.slice(0,fsCwd.lastIndexOf("/"))||"/Concordia");
+}
+
+async function fsMkdir(){
+  const n=prompt(t("qFolder"));
+  if(!n)return;
+  try{
+    await fsCall("/api/fs/mkdir",{method:"POST",
+      headers:{"Content-Type":"application/x-www-form-urlencoded"},
+      body:"path="+encodeURIComponent(fsCwd+"/"+n)});
+    fsList(fsCwd);
+  }catch(e){fsMsg(e.message);}
+}
+
+async function fsRename(p){
+  const was=p.slice(p.lastIndexOf("/")+1);
+  const n=prompt(t("qRename"),was);
+  if(!n||n===was)return;
+  try{
+    await fsCall("/api/fs/rename",{method:"POST",
+      headers:{"Content-Type":"application/x-www-form-urlencoded"},
+      body:"path="+encodeURIComponent(p)+"&to="+encodeURIComponent(fsCwd+"/"+n)});
+    fsList(fsCwd);
+  }catch(e){fsMsg(e.message);}
+}
+
+async function fsDelete(p){
+  if(!confirm(t("qDelete")+"  "+p))return;
+  try{
+    await fsCall("/api/fs/delete",{method:"POST",
+      headers:{"Content-Type":"application/x-www-form-urlencoded"},
+      body:"path="+encodeURIComponent(p)});
+    fsList(fsCwd);
+  }catch(e){fsMsg(e.message);}
+}
+
+/* Downloads go through a plain link rather than fetch: the token travels in a
+ * header, so the link is built, clicked and thrown away from a blob instead. */
+async function fsGet(p){
+  fsMsg(t("sUploading"));
+  try{
+    const r=await fetch("/api/fs/read?dl=1&path="+encodeURIComponent(p),
+                        {headers:{"X-Token":tok()}});
+    if(!r.ok)throw new Error("HTTP "+r.status);
+    const url=URL.createObjectURL(await r.blob());
+    const a=document.createElement("a");
+    a.href=url; a.download=p.slice(p.lastIndexOf("/")+1);
+    a.click();
+    URL.revokeObjectURL(url);
+    fsMsg("");
+  }catch(e){fsMsg(e.message);}
+}
+
+async function fsEdit(p){
+  try{
+    const r=await fetch("/api/fs/read?path="+encodeURIComponent(p),
+                        {headers:{"X-Token":tok()}});
+    if(!r.ok)throw new Error("HTTP "+r.status);
+    const text=await r.text();
+    showModal(head(p.slice(p.lastIndexOf("/")+1),p)+
+      `<textarea id="fsEd" rows="16" spellcheck="false"
+        style="width:100%;font-family:ui-monospace,monospace;font-size:.85em"></textarea>
+       <div class="btns"><button class="act" onclick="fsSave('${esc(p)}')">${t("bSave")}</button>
+       <button class="ghost" onclick="closeModal()">${t("bClose")}</button></div>`);
+    $("#fsEd").value=text;
+  }catch(e){fsMsg(e.message);}
+}
+
+async function fsSave(p){
+  try{
+    await fsCall("/api/fs/save",{method:"POST",
+      headers:{"Content-Type":"application/x-www-form-urlencoded"},
+      body:"path="+encodeURIComponent(p)+"&content="+encodeURIComponent($("#fsEd").value)});
+    closeModal();
+    fsList(fsCwd);
+  }catch(e){alert(e.message);}
+}
+
+/* A .zip is unpacked into the current folder by the board; anything else lands
+ * as the file it is. Same endpoint either way - the extension decides. */
+async function fsUpload(){
+  const f=$("#fsFile").files[0];
+  if(!f)return;
+  fsMsg(t("sUploading")+" "+f.name);
+  const body=new FormData();
+  body.append("file",f,f.name);
+  try{
+    const j=await fsCall("/api/fs/upload?path="+encodeURIComponent(fsCwd),
+                         {method:"POST",body:body});
+    fsMsg(j.unpacked!==undefined
+      ? t("sUnpacked")+": "+j.unpacked+" ("+fsSize(j.bytes)+")"
+      : "");
+    fsList(fsCwd);
+  }catch(e){fsMsg(e.message);}
+  $("#fsFile").value="";
+}
+
+/* ------------------------------------------------------------------- qr
+ * A QR encoder: byte mode, error-correction level M - the level the Matter
+ * specification asks for - and versions 1 to 9, which holds 180 bytes against
+ * the twenty-odd characters a commissioning payload actually is.
+ *
+ * Version 10 is deliberately absent. It was written, and symbols it produced
+ * would not decode: every version from 1 to 9 was checked against a real
+ * decoder and passed, 10 failed, and the cause was not found. Version 10 is
+ * where the character-count field grows from 8 bits to 16, so that is the
+ * likely neighbourhood, but likely is not good enough for something whose only
+ * job is to be scanned. An eightfold margin without it is the better trade.
+ *
+ * It lives here because the panel used to hand the payload to a website to be
+ * drawn. That wanted a working internet connection on a page whose whole point
+ * is a box on the local network, it would break the day that site moved, and it
+ * published the code that commissions this bridge to a third party. A hundred
+ * lines is a fair price for none of that.
+ */
+const QR=(()=>{
+  /* per version: [ec codewords per block, blocks, data each, blocks, data each] */
+  const EC={1:[10,1,16,0,0],2:[16,1,28,0,0],3:[26,1,44,0,0],4:[18,2,32,0,0],
+            5:[24,2,43,0,0],6:[16,4,27,0,0],7:[18,4,31,0,0],8:[22,2,38,2,39],
+            9:[22,3,36,2,37]};
+  const ALIGN={1:[],2:[6,18],3:[6,22],4:[6,26],5:[6,30],6:[6,34],
+               7:[6,22,38],8:[6,24,42],9:[6,26,46]};
+  const words=v=>EC[v][1]*EC[v][2]+EC[v][3]*EC[v][4];
+  const capacity=v=>Math.floor((words(v)*8-4-(v<10?8:16))/8);
+
+  /* GF(256) with the primitive polynomial 0x11d, for Reed-Solomon. */
+  const EXP=new Uint8Array(512),LOG=new Uint8Array(256);
+  for(let i=0,x=1;i<255;i++){EXP[i]=x;LOG[x]=i;x<<=1;if(x&256)x^=0x11d;}
+  for(let i=255;i<512;i++)EXP[i]=EXP[i-255];
+  const mul=(a,b)=>a&&b?EXP[LOG[a]+LOG[b]]:0;
+
+  function ecBytes(data,n){
+    let gen=[1];
+    for(let i=0;i<n;i++){
+      const next=[...gen,0];
+      for(let j=0;j<gen.length;j++)next[j+1]^=mul(gen[j],EXP[i]);
+      gen=next;
+    }
+    const rem=new Uint8Array(data.length+n);
+    rem.set(data);
+    for(let i=0;i<data.length;i++){
+      const f=rem[i];
+      if(!f)continue;
+      for(let j=0;j<gen.length;j++)rem[i+j]^=mul(gen[j],f);
+    }
+    return rem.slice(data.length);
+  }
+
+  /* Payload -> the final, interleaved codeword stream. */
+  function codewords(v,bytes){
+    const out=[],push=(val,n)=>{for(let i=n-1;i>=0;i--)out.push((val>>i)&1);};
+    push(4,4);                                   /* byte mode */
+    push(bytes.length,v<10?8:16);
+    bytes.forEach(b=>push(b,8));
+    const room=words(v)*8;
+    push(0,Math.min(4,room-out.length));         /* terminator */
+    while(out.length%8)out.push(0);
+    for(let i=0;out.length<room;i++)push(i%2?0x11:0xec,8);
+    const data=new Uint8Array(room/8);
+    for(let i=0;i<data.length;i++)
+      for(let j=0;j<8;j++)data[i]=(data[i]<<1)|out[i*8+j];
+
+    const[ecn,b1,d1,b2,d2]=EC[v],blocks=[],ecs=[];
+    let at=0;
+    for(let i=0;i<b1+b2;i++){
+      const blk=data.slice(at,at+(i<b1?d1:d2));
+      at+=blk.length;
+      blocks.push(blk);ecs.push(ecBytes(blk,ecn));
+    }
+    const flat=[];
+    for(let i=0;i<Math.max(d1,d2);i++)blocks.forEach(b=>{if(i<b.length)flat.push(b[i]);});
+    for(let i=0;i<ecn;i++)ecs.forEach(e=>flat.push(e[i]));
+    return flat;
+  }
+
+  const MASK=[(y,x)=>(y+x)%2,(y,x)=>y%2,(y,x)=>x%3,(y,x)=>(y+x)%3,
+              (y,x)=>((y>>1)+Math.floor(x/3))%2,(y,x)=>(y*x)%2+(y*x)%3,
+              (y,x)=>((y*x)%2+(y*x)%3)%2,(y,x)=>(((y+x)%2)+((y*x)%3))%2];
+
+  /* The four penalty rules from the specification. Any mask decodes correctly;
+   * scoring only picks the one a scanner will have the easiest time with. */
+  function penalty(m,n){
+    let p=0,dark=0;
+    const runs=s=>{
+      let r=0,last=-1;
+      for(let i=0;i<=s.length;i++){
+        const c=i<s.length?s[i]:-1;
+        if(c===last){if(++r===5)p+=3;else if(r>5)p++;}
+        else{r=1;last=c;}
+      }
+      for(let i=0;i<=s.length-11;i++){
+        const w=s.slice(i,i+11).join("");
+        if(w==="10111010000"||w==="00001011101")p+=40;
+      }
+    };
+    for(let y=0;y<n;y++){
+      runs(Array.from(m[y]));
+      for(let x=0;x<n;x++){
+        dark+=m[y][x];
+        if(y&&x&&m[y][x]===m[y-1][x]&&m[y][x]===m[y][x-1]&&m[y][x]===m[y-1][x-1])p+=3;
+      }
+    }
+    for(let x=0;x<n;x++)runs(Array.from({length:n},(_,y)=>m[y][x]));
+    p+=Math.floor(Math.abs(dark*100/(n*n)-50)/5)*10;
+    return p;
+  }
+
+  function matrix(v,cw){
+    const n=17+4*v,m=[],fixed=[];
+    for(let i=0;i<n;i++){m.push(new Uint8Array(n));fixed.push(new Uint8Array(n));}
+    const put=(y,x,val)=>{if(y>=0&&x>=0&&y<n&&x<n){m[y][x]=val;fixed[y][x]=1;}};
+
+    [[0,0],[0,n-7],[n-7,0]].forEach(([r,c])=>{      /* finders + separators */
+      for(let i=-1;i<8;i++)for(let j=-1;j<8;j++){
+        const on=i>=0&&i<7&&j>=0&&j<7&&
+                 (i===0||i===6||j===0||j===6||(i>=2&&i<=4&&j>=2&&j<=4));
+        put(r+i,c+j,on?1:0);
+      }
+    });
+    for(let i=8;i<n-8;i++){put(6,i,i%2?0:1);put(i,6,i%2?0:1);}   /* timing */
+    const A=ALIGN[v];
+    A.forEach(r=>A.forEach(c=>{                     /* alignment, minus corners */
+      /* Only the three that would sit on a finder are dropped, and they are
+       * identified by position. Testing "is this module already fixed?" instead
+       * looks equivalent and is not: from version 7 the centres at (6,22) and
+       * (22,6) land on the timing lines, which are fixed too, so those patterns
+       * went missing and every symbol of version 7 and up became unreadable. */
+      if((r===6&&c===6)||(r===6&&c===n-7)||(r===n-7&&c===6))return;
+      for(let i=-2;i<=2;i++)for(let j=-2;j<=2;j++)
+        put(r+i,c+j,Math.abs(i)===2||Math.abs(j)===2||(!i&&!j)?1:0);
+    }));
+    put(n-8,8,1);                                   /* the always-dark module */
+    for(let i=0;i<9;i++){                            /* reserve the format area */
+      if(!fixed[8][i])put(8,i,0);
+      if(!fixed[i][8])put(i,8,0);
+    }
+    for(let i=0;i<8;i++){
+      if(!fixed[8][n-1-i])put(8,n-1-i,0);
+      if(!fixed[n-1-i][8])put(n-1-i,8,0);
+    }
+    if(v>=7){                                        /* version blocks, BCH(18,6) */
+      let rem=v;
+      for(let i=0;i<12;i++)rem=(rem<<1)^((rem>>>11)*0x1f25);
+      const info=(v<<12)|(rem&0xfff);
+      for(let i=0;i<18;i++){
+        const bit=(info>>>i)&1,a=Math.floor(i/3),b=i%3;
+        put(n-11+b,a,bit);put(a,n-11+b,bit);
+      }
+    }
+
+    let at=0;                                        /* the zig-zag data walk */
+    for(let right=n-1;right>=1;right-=2){
+      if(right===6)right=5;
+      for(let vert=0;vert<n;vert++)for(let j=0;j<2;j++){
+        const x=right-j,up=((right+1)&2)===0,y=up?n-1-vert:vert;
+        if(!fixed[y][x]&&at<cw.length*8){
+          m[y][x]=(cw[at>>>3]>>>(7-(at&7)))&1;at++;
+        }
+      }
+    }
+
+    let best=null,bestScore=Infinity;
+    for(let k=0;k<8;k++){
+      const t=m.map(row=>Uint8Array.from(row));
+      for(let y=0;y<n;y++)for(let x=0;x<n;x++)
+        if(!fixed[y][x]&&MASK[k](y,x)===0)t[y][x]^=1;
+      /* Level M is 0 in the format field - not 2, which is H. Get this wrong
+       * and the block tables above say one thing while the format bits say
+       * another, and every scanner correctly gives up. */
+      let rem=k;
+      for(let i=0;i<10;i++)rem=(rem<<1)^((rem>>>9)*0x537);
+      const info=((k<<10)|(rem&0x3ff))^0x5412;
+      for(let i=0;i<15;i++){                         /* format info, both copies */
+        const bit=(info>>>i)&1;
+        t[i<6?i:i===6?7:i===7?8:n-15+i][8]=bit;
+        t[8][i<8?n-1-i:i===8?7:14-i]=bit;
+      }
+      const score=penalty(t,n);
+      if(score<bestScore){bestScore=score;best=t;}
+    }
+    return{m:best,n};
+  }
+
+  /* Returns an <svg> for the payload, or "" if it will not fit. Black on white
+   * whatever the page theme is doing - a QR inverted by dark mode is a QR that
+   * half the scanners on the market refuse to read. */
+  return function(text,quiet=4){
+    const bytes=[...new TextEncoder().encode(text)];
+    let v=1;
+    while(v<=9&&capacity(v)<bytes.length)v++;
+    if(v>9)return"";                    /* caller shows the text payload instead */
+    const{m,n}=matrix(v,codewords(v,bytes)),size=n+quiet*2;
+    let d="";
+    for(let y=0;y<n;y++)for(let x=0;x<n;x++)
+      if(m[y][x])d+=`M${x+quiet} ${y+quiet}h1v1h-1z`;
+    return`<svg viewBox="0 0 ${size} ${size}" width="100%" style="max-width:260px;`+
+          `display:block;margin:0 auto;border-radius:8px" shape-rendering="crispEdges">`+
+          `<rect width="${size}" height="${size}" fill="#fff"/>`+
+          `<path d="${d}" fill="#000"/></svg>`;
+  };
+})();
+
+/* -------------------------------------------------------------- pairing */
+async function loadPairing(){
+  try{
+    const p=await api("/api/pairing");
+    wx.pair={code:p.manual?p.manual.replace(/(\d{4})(\d{3})(\d{4})/,"$1-$2-$3"):"—",qr:p.qr||""};
+  }catch(e){wx.pair={};}
+  paintWidgets();
+}
+function copyPair(){
+  const text=(wx.pair.code||"")+"  "+(wx.pair.qr||"");
+  navigator.clipboard&&navigator.clipboard.writeText(text);
+}
+
+/* ------------------------------------------------------------------ info */
+/* Ecosystem support for bridged Matter device types. Kept as data, not as
+   prose, so the table can be corrected in one place when a platform ships
+   something new. */
+/* Every application device type in the Matter Device Library, with the id the
+   spec assigns it. `slug` links a row to the type this firmware can host, which
+   is what fills the bridge column - and it is filled from /api/types at run
+   time, so the column tells the truth even if this table drifts.
+   Support: 1 published, 0 not published, null not established. */
+const MDT=[
+["Lighting",[
+ ["0x0100","On/Off Light","light",[1,1,1]],
+ ["0x0101","Dimmable Light","dimmer",[1,1,1]],
+ ["0x010C","Color Temperature Light","colorlight",[1,1,1]],
+ ["0x010D","Extended Color Light","rgblight",[1,1,1]],
+ ["0x010F","Mounted On/Off Control","mountedonoff",[1,1,1]],
+ ["0x0110","Mounted Dimmable Load Control","mounteddimmer",[1,1,1]]]],
+["Plugs and actuators",[
+ ["0x010A","On/Off Plug-in Unit","plug",[1,1,1]],
+ ["0x010B","Dimmable Plug-in Unit","dimplug",[1,1,1]],
+ ["0x0042","Water Valve","valve",[0,1,1]],
+ ["0x0303","Pump",null,[null,null,null]],
+ ["0x0040","Irrigation System",null,[null,null,null]]]],
+["Switches and controllers",[
+ ["0x000F","Generic Switch",null,[1,0,null]],
+ ["0x0103","On/Off Light Switch",null,[1,1,null]],
+ ["0x0104","Dimmer Switch",null,[1,1,null]],
+ ["0x0105","Color Dimmer Switch",null,[null,null,null]],
+ ["0x0840","Control Bridge",null,[null,null,null]],
+ ["0x0304","Pump Controller",null,[null,null,null]],
+ ["0x030A","Thermostat Controller",null,[null,null,null]],
+ ["0x000B","Door Lock Controller",null,[null,null,null]],
+ ["0x0203","Window Covering Controller",null,[null,null,null]]]],
+["Sensors",[
+ ["0x0015","Contact Sensor","contact",[1,1,1]],
+ ["0x0106","Light Sensor","illuminance",[1,1,1]],
+ ["0x0107","Occupancy Sensor","occupancy",[1,1,1]],
+ ["0x0302","Temperature Sensor","temp",[1,1,1]],
+ ["0x0307","Humidity Sensor","humidity",[1,1,1]],
+ ["0x0305","Pressure Sensor","pressure",[0,1,1]],
+ ["0x0306","Flow Sensor","flow",[0,1,1]],
+ ["0x0850","On/Off Sensor","onoffsensor",[0,1,1]],
+ ["0x002C","Air Quality Sensor","airquality",[1,1,1]],
+ ["0x0076","Smoke CO Alarm","smoke",[1,1,1]],
+ ["0x0041","Water Freeze Detector","freeze",[0,0,1]],
+ ["0x0043","Water Leak Detector","leak",[1,1,1]],
+ ["0x0044","Rain Sensor","rain",[0,0,1]],
+ ["0x0045","Soil Sensor","soil",[0,0,0]]]],
+["Closures",[
+ ["0x000A","Door Lock","lock",[1,1,1]],
+ ["0x0202","Window Covering","blind",[1,1,1]],
+ ["0x0230","Closure",null,[null,null,null]],
+ ["0x0231","Closure Panel",null,[null,null,null]],
+ ["0x023E","Closure Controller",null,[null,null,null]]]],
+["Heating, cooling and air",[
+ ["0x0301","Thermostat","thermostat",[1,1,1]],
+ ["0x0300","Heating/Cooling Unit","hvacunit",[0,1,1]],
+ ["0x0072","Room Air Conditioner","aircon",[1,1,1]],
+ ["0x0309","Heat Pump","heatpump",[0,1,0]],
+ ["0x050F","Water Heater","waterheater",[0,1,0]],
+ ["0x002B","Fan","fan",[1,1,1]],
+ ["0x002D","Air Purifier","purifier",[1,1,1]],
+ ["0x007D","Humidifier / Dehumidifier",null,[null,null,null]],
+ ["0x0071","Temperature Controlled Cabinet",null,[null,null,null]]]],
+["Appliances",[
+ ["0x0074","Robotic Vacuum Cleaner",null,[null,null,null]],
+ ["0x0070","Refrigerator",null,[null,null,null]],
+ ["0x0073","Laundry Washer",null,[null,null,null]],
+ ["0x007C","Laundry Dryer",null,[null,null,null]],
+ ["0x0075","Dishwasher",null,[null,null,null]],
+ ["0x0078","Cooktop",null,[null,null,null]],
+ ["0x0077","Cook Surface",null,[null,null,null]],
+ ["0x007B","Oven",null,[null,null,null]],
+ ["0x0079","Microwave Oven",null,[null,null,null]],
+ ["0x007A","Extractor Hood",null,[null,null,null]]]],
+["Energy",[
+ ["0x050C","Energy EVSE",null,[0,0,null]],
+ ["0x0017","Solar Power",null,[null,null,null]],
+ ["0x0018","Battery Storage",null,[null,null,null]],
+ ["0x050D","Device Energy Management",null,[null,null,null]],
+ ["0x0510","Electrical Sensor",null,[null,null,null]],
+ ["0x0511","Electrical Utility Meter",null,[null,null,null]],
+ ["0x0514","Electrical Meter",null,[null,null,null]],
+ ["0x0513","Electrical Energy Tariff",null,[null,null,null]]]],
+["Cameras and entry",[
+ ["0x0142","Camera",null,[null,null,null]],
+ ["0x0143","Video Doorbell",null,[null,null,null]],
+ ["0x0144","Floodlight Camera",null,[null,null,null]],
+ ["0x0145","Snapshot Camera",null,[null,null,null]],
+ ["0x0141","Audio Doorbell",null,[null,null,null]],
+ ["0x0148","Doorbell",null,[null,null,null]],
+ ["0x0146","Chime",null,[null,null,null]],
+ ["0x0140","Intercom",null,[null,null,null]]]],
+["Media",[
+ ["0x0028","Basic Video Player",null,[null,null,null]],
+ ["0x0023","Casting Video Player",null,[null,null,null]],
+ ["0x0029","Casting Video Client",null,[null,null,null]],
+ ["0x0022","Speaker",null,[null,null,null]],
+ ["0x0024","Content App",null,[null,null,null]],
+ ["0x002A","Video Remote Control",null,[null,null,null]]]]];
+
+function buildMatrix(){
+  const mark=v=>v===1?'<span class="yes">●</span>'
+                    :v===0?'<span class="no">—</span>'
+                          :'<span class="no">?</span>';
+  const have=new Set(types.map(x=>x.slug));
+  let n=0, rows="";
+  MDT.forEach(([cat,list])=>{
+    rows+=`<tr class="grp"><td colspan="6">${esc(cat)}</td></tr>`;
+    list.forEach(([id,name,slug,s])=>{
+      const mine=slug&&have.has(slug); if(mine)n++;
+      rows+=`<tr${mine?' class="mine"':''}><td>${esc(name)}</td>
+        <td class="mono">${id}</td>
+        <td class="c">${mine?'<span class="yes">●</span>':'<span class="no">—</span>'}</td>
+        <td class="c">${mark(s[0])}</td><td class="c">${mark(s[1])}</td>
+        <td class="c">${mark(s[2])}</td></tr>`;
+    });
+  });
+  $("#matrix").querySelector("tbody").innerHTML=rows;
+  $("#mxCount").textContent=`${n} / ${MDT.reduce((a,[,l])=>a+l.length,0)}`;
+}
+function buildVersions(){
+  $("#verBox").innerHTML=[
+    ["Companion firmware",status.fw||"—"],
+    ["Panel",document.title+" UI 2.0"],
+    ["Link",status.bridge?`online · ${status.used}/${status.total} endpoints`
+            :status.link==="pairing"?"pairing…":"no link"],
+    ["Wi-Fi",`${status.ssid||"—"} · ${status.ip||"—"} · ${status.rssi||0} dBm`],
+    ["Hostname",`${status.hostname||"concordia"}.local`],
+    ["Free heap",`${status.heap||0} bytes`],
+    ["Uptime",`${Math.floor((status.uptime||0)/3600)} h ${Math.floor(((status.uptime||0)%3600)/60)} min`],
+    ["Device types built in",String(types.length)]
+  ].map(([k,v])=>`<div class="kv"><span>${esc(k)}</span><span>${esc(v)}</span></div>`).join("");
+}
+
+/* ------------------------------------------------------------------ boot */
+function applyI18n(){
+  document.querySelectorAll("[data-i18n]").forEach(e=>e.textContent=t(e.dataset.i18n));
+  /* Icon-only buttons carry their name in the tooltip and for screen readers. */
+  document.querySelectorAll("[data-ti]").forEach(e=>{
+    e.title=t(e.dataset.ti); e.setAttribute("aria-label",t(e.dataset.ti));
+  });
+  $("#orderBtn").textContent=ordering?t("bDone"):t("bReorder");
+  /* Built from data, so data-i18n cannot reach them. */
+  const pal=$("#setPal"), cur=pal.value;
+  pal.innerHTML=Object.keys(PAL).map(k=>`<option value="${k}">${esc(t("p_"+k))}</option>`).join("")+
+                `<option value="custom">${esc(t("sCustom"))}</option>`;
+  pal.value=cur;
+  paintAccount();
+  moveThumb();
+}
+async function boot(){
+  ui=await api("/api/ui").catch(()=>({}));
+  status=await api("/api/status");
+  lang=status.lang||"en"; $("#lang").value=lang;
+  applyTheme();
+  applyI18nOne($("#gate")); /* translated before anyone can be looking at it */
+
+  /* Only worth asking if an account could possibly answer - see users.h on
+     the hub for the bootstrap window where none exists yet. */
+  if(status.users){
+    const s=await api("/api/session");
+    me=(s&&s.ok===false)?null:s;
+  }
+
+  /* Nothing else loads, fetches, or renders until this clears - that is the
+     whole point of a gate instead of a modal over a page that already did
+     all of that work. doLogin() calls afterAuth() itself once it clears. */
+  if(status.users&&!me){
+    showGate();
+    return;
+  }
+  await afterAuth();
+}
+
+async function afterAuth(){
+  $("#setPal").innerHTML=Object.keys(PAL).map(k=>
+      `<option value="${k}">${esc(t("p_"+k))}</option>`).join("")+
+      `<option value="custom">${esc(t("sCustom"))}</option>`;
+  $("#setTheme").value=ui.theme||"auto";
+  $("#setPal").value=PAL[ui.pal]?ui.pal:(ui.pal?"custom":"indigo");
+  $("#setC1").value=ui.c1||PAL.indigo[0]; $("#setC2").value=ui.c2||PAL.indigo[1];
+  $("#setCluster").checked=!!ui.cluster;
+  applyTheme();
+
+  types=(await api("/api/types")).types||[];
+  devices=(await api("/api/devices")).devices||[];
+  applyI18n(); render(); go("home"); buildMatrix(); buildVersions();
+  loadWifi(); loadPairing(); loadUsers(); pollAll(true);
+  tick(); setInterval(tick,1000);
+  setInterval(pollAll,15000);
+  setInterval(()=>{
+    if(!editing&&!$("#mBack").classList.contains("open")&&!document.body.classList.contains("gated"))refresh();
+  },8000);
+  setInterval(buildVersions,20000);
+}
+$$("#tabs button").forEach(b=>b.onclick=()=>go(b.dataset.tab));
+$("#homeWrap").addEventListener("pointerdown",dragStart);
+$("#lang").onchange=async e=>{lang=e.target.value;await api("/api/lang","lang="+lang);
+  applyI18n();render();buildVersions();loadUsers();};
+boot();
+</script>
+</body>
+</html>

@@ -1,0 +1,67 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Concordia</title>
+<style>
+body{font:16px/1.55 system-ui,-apple-system,sans-serif;margin:0 auto;padding:24px;
+     max-width:34rem;background:#14161a;color:#e8e8ea}
+h1{font-size:1.15rem;margin:0 0 .2em}
+p.sub{color:#8b9099;margin:0 0 1.4em;font-size:.9rem}
+code{background:#232730;padding:.1em .35em;border-radius:4px;font-size:.9em}
+input,button{font:inherit}
+button{padding:.55em 1.1em;border:0;border-radius:6px;background:#3b6fd4;color:#fff;
+       cursor:pointer;margin-top:10px}
+button:disabled{background:#3a3f48;cursor:default}
+#w,#s{margin-top:14px;white-space:pre-wrap}
+#s{color:#8b9099;font-size:.9rem}
+</style>
+
+<h1>Concordia</h1>
+<p class="sub">The admin panel is not on the card. This is the firmware's own
+rescue page &mdash; enough to put one there, and nothing more.</p>
+
+<p id="w">Checking the card&hellip;</p>
+
+<p><input type="file" id="f" accept=".gz,.html"><br>
+<button id="b">Install panel</button></p>
+
+<div id="s"></div>
+
+<p class="sub" style="margin-top:2em">Or from a terminal, with the token from
+<code>/Concordia/security/api_token</code> on the card:<br>
+<code>curl -H "X-Token: &lt;token&gt;" -F "file=@index.html.gz" http://&lt;ip&gt;/api/web</code></p>
+
+<script>
+const $ = function (id) { return document.getElementById(id); };
+let token = "";
+
+fetch("/api/sd").then(function (r) { return r.json(); }).then(function (d) {
+  if (!d.ready) { $("w").textContent = "No usable card: " + d.status; return; }
+  token = d.token || "";
+  $("w").textContent = d.page
+    ? "A panel is installed at " + d.page + " but it would not open."
+    : "Card ready (" + d.status + "). No panel installed yet.";
+}).catch(function () {
+  $("w").textContent = "The board is not answering.";
+});
+
+$("b").onclick = async function () {
+  const file = $("f").files[0];
+  if (!file) { $("s").textContent = "Choose a file first."; return; }
+  $("b").disabled = true;
+  $("s").textContent = "Uploading…";
+  const body = new FormData();
+  body.append("file", file, "index.html.gz");
+  try {
+    const r = await fetch("/api/web",
+      { method: "POST", headers: token ? { "X-Token": token } : {}, body: body });
+    const j = await r.json().catch(function () { return {}; });
+    $("s").textContent = j.ok
+      ? "Installed. Reload this page."
+      : "Refused: " + (j.error || ("HTTP " + r.status));
+  } catch (e) {
+    $("s").textContent = "The upload did not complete.";
+  }
+  $("b").disabled = false;
+};
+</script>

@@ -1,0 +1,13 @@
+# Target labels
+ nRF54l15_Bridge
+# Source files and their labels
+/Users/romanenko/Cancordia/nRF54l15_Bridge/build_diag/_sysbuild/sysbuild/images/CMakeFiles/nRF54l15_Bridge
+/Users/romanenko/Cancordia/nRF54l15_Bridge/build_diag/_sysbuild/sysbuild/images/CMakeFiles/nRF54l15_Bridge.rule
+/Users/romanenko/Cancordia/nRF54l15_Bridge/build_diag/_sysbuild/sysbuild/images/CMakeFiles/nRF54l15_Bridge-complete.rule
+/Users/romanenko/Cancordia/nRF54l15_Bridge/build_diag/_sysbuild/sysbuild/images/nRF54l15_Bridge-prefix/src/nRF54l15_Bridge-stamp/nRF54l15_Bridge-build.rule
+/Users/romanenko/Cancordia/nRF54l15_Bridge/build_diag/_sysbuild/sysbuild/images/nRF54l15_Bridge-prefix/src/nRF54l15_Bridge-stamp/nRF54l15_Bridge-configure.rule
+/Users/romanenko/Cancordia/nRF54l15_Bridge/build_diag/_sysbuild/sysbuild/images/nRF54l15_Bridge-prefix/src/nRF54l15_Bridge-stamp/nRF54l15_Bridge-download.rule
+/Users/romanenko/Cancordia/nRF54l15_Bridge/build_diag/_sysbuild/sysbuild/images/nRF54l15_Bridge-prefix/src/nRF54l15_Bridge-stamp/nRF54l15_Bridge-install.rule
+/Users/romanenko/Cancordia/nRF54l15_Bridge/build_diag/_sysbuild/sysbuild/images/nRF54l15_Bridge-prefix/src/nRF54l15_Bridge-stamp/nRF54l15_Bridge-mkdir.rule
+/Users/romanenko/Cancordia/nRF54l15_Bridge/build_diag/_sysbuild/sysbuild/images/nRF54l15_Bridge-prefix/src/nRF54l15_Bridge-stamp/nRF54l15_Bridge-patch.rule
+/Users/romanenko/Cancordia/nRF54l15_Bridge/build_diag/_sysbuild/sysbuild/images/nRF54l15_Bridge-prefix/src/nRF54l15_Bridge-stamp/nRF54l15_Bridge-update.rule

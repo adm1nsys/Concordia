@@ -1,0 +1,33 @@
+# Concordia hub — flash layout.
+#
+# A partitions.csv in the sketch folder overrides the board's default (see
+# recipe.hooks.prebuild.3 in the core's platform.txt), so the choice lives here
+# in the repository rather than in whichever IDE menu happened to be selected.
+#
+# Why not the default: that layout spends 1.5 MB on SPIFFS and leaves the
+# application 1.25 MB, of which it was already using 98%. The panel and every
+# configuration file live on the SD card now, so the on-chip filesystem is dead
+# weight — and handing its space to the application costs nothing.
+#
+#   application:  1.25 MB -> 1.94 MB   (+55%)
+#   SPIFFS:       1.5 MB  -> gone
+#
+# Both OTA slots are kept. Overwriting the running firmware in place would need
+# a loader executing from RAM with no way to ask for help, and a power cut in
+# that window leaves a board only a cable can revive. Two slots mean a failed
+# update falls back to the one that worked.
+#
+# nvs stays at 0x9000 with its original size, deliberately: it holds the saved
+# Wi-Fi credentials, and moving or resizing it would silently lose them on the
+# first flash.
+#
+# Later, when the launcher is written, app1 becomes its home rather than a
+# second copy of the application — app0 does not move either way, so that change
+# will not disturb this one.
+
+#   Name, Type,  SubType,   Offset,      Size, Flags
+     nvs, data,      nvs,   0x9000,    0x5000,
+ otadata, data,      ota,   0xE000,    0x2000,
+    app0,  app,    ota_0,  0x10000,  0x1F0000,
+    app1,  app,    ota_1, 0x200000,  0x1F0000,
+coredump, data, coredump, 0x3F0000,   0x10000,

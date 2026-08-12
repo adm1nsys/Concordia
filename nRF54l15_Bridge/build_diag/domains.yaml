@@ -1,0 +1,7 @@
+default: nRF54l15_Bridge
+build_dir: /Users/romanenko/Cancordia/nRF54l15_Bridge/build_diag
+domains:
+  - name: nRF54l15_Bridge
+    build_dir: /Users/romanenko/Cancordia/nRF54l15_Bridge/build_diag/nRF54l15_Bridge
+flash_order:
+  - nRF54l15_Bridge

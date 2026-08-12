@@ -1,0 +1,11 @@
+################### OPENTHREAD REPORT ###################
++ Target device: nrf54l15
++ Thread version: v1.4
++ OpenThread library feature set: Full Thread Device (FTD)
++ OpenThread Library: openthread/lib/nrf54lx/soft-float/v1.4/ftd
++ OpenThread NCS revision: ncs-thread-reference-20250402-18-g0fe68ff23
++ OpenThread NCS SHA: 0fe68ff23
++ NCS revision: v3.4.0
++ NCS SHA: 9955305560
++ No differences in the used Thread library in comparison to the NCS v3.4.0 release.
+###################        END        ###################

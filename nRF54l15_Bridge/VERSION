@@ -1,0 +1,11 @@
+# Concordia firmware version.
+#
+# This is what a controller shows as the hub's software version, and it is the
+# only place that decides it: CONFIG_CHIP_DEVICE_SOFTWARE_VERSION_STRING does
+# not exist in NCS 3.4. Left at the template's 3.4.0 it reported "3.4.0+0",
+# which was Nordic's SDK version wearing our name.
+VERSION_MAJOR = 1
+VERSION_MINOR = 0
+PATCHLEVEL = 0
+VERSION_TWEAK = 0
+EXTRAVERSION =

@@ -1,0 +1,349 @@
+#
+# Copyright (c) 2022 Nordic Semiconductor
+#
+# SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
+#
+mainmenu "Matter nRF Connect Template Example Application"
+
+# Sample configuration used for Thread networking
+if OPENTHREAD
+
+# Full Thread Device, not the template's minimal default.
+#
+# The bridge is mains-powered and hosts up to a hundred endpoints a controller
+# subscribes to; it should keep its radio on and route for the mesh rather than
+# sleep. An MTD cannot be a parent either, so anything downstream would have to
+# reach the border router directly.
+#
+# This costs RAM: the router tables and the larger OpenThread library are a good
+# part of why the previous project sat so close to the ceiling.
+choice OPENTHREAD_NORDIC_LIBRARY_CONFIGURATION
+	default OPENTHREAD_NORDIC_LIBRARY_FTD
+endchoice
+
+choice OPENTHREAD_DEVICE_TYPE
+	default OPENTHREAD_FTD
+endchoice
+
+# SED with 0 dBm Thread TX output power for nRF54L15 tag
+if BOARD_NRF54L15TAG
+
+config CHIP_ENABLE_ICD_SUPPORT
+	default y
+
+config OPENTHREAD_DEFAULT_TX_POWER
+	default 0
+
+endif
+
+endif # OPENTHREAD
+
+config CHIP_WIFI
+	default y if SHIELD_NRF7002EB2
+
+menu "Matter bridge options"
+
+config BRIDGE_MAX_ENDPOINTS
+	int "Maximum number of bridged devices"
+	default 8
+	range 1 240
+	help
+	  Size of the bridge slot table and of the Matter dynamic endpoint
+	  storage. Each slot costs RAM (endpoint record + data versions +
+	  Matter attribute-storage metadata), so raising this is the main
+	  lever on how many devices the board can host at once.
+
+config BRIDGE_DEBUG_LOG
+	bool "Verbose bridge debug logging"
+	default y
+	help
+	  Emit extra informational logs from the bridge. Turn this off in
+	  release builds (e.g. on RAM-constrained boards) to save memory.
+
+menu "Bridged device types available to host"
+
+config BRIDGE_TYPE_TEMPERATURE
+	bool "Temperature sensor"
+	default y
+
+config BRIDGE_TYPE_HUMIDITY
+	bool "Humidity sensor"
+	default y
+
+config BRIDGE_TYPE_ONOFF_LIGHT
+	bool "On/Off light"
+	default y
+
+config BRIDGE_TYPE_CONTACT
+	bool "Contact sensor"
+	default y
+
+config BRIDGE_TYPE_OCCUPANCY
+	bool "Occupancy sensor"
+	default y
+
+config BRIDGE_TYPE_PRESSURE
+	bool "Pressure sensor"
+	default y
+
+config BRIDGE_TYPE_FLOW
+	bool "Flow sensor"
+	default y
+
+config BRIDGE_TYPE_ILLUMINANCE
+	bool "Illuminance (light) sensor"
+	default y
+
+config BRIDGE_TYPE_WATER_LEAK
+	bool "Water leak detector"
+	default y
+
+config BRIDGE_TYPE_ONOFF_PLUG
+	bool "On/Off plug / outlet"
+	default y
+
+config BRIDGE_TYPE_DIMMABLE_LIGHT
+	bool "Dimmable light"
+	default y
+
+config BRIDGE_TYPE_COLOR_LIGHT
+	bool "Color temperature light"
+	default y
+
+config BRIDGE_TYPE_WINDOW_COVERING
+	bool "Window covering (blinds / shades)"
+	default y
+
+config BRIDGE_TYPE_DOOR_LOCK
+	bool "Door lock"
+	default y
+
+config BRIDGE_TYPE_RGB_LIGHT
+	bool "Extended color (RGB) light"
+	default y
+
+config BRIDGE_TYPE_DIMMABLE_PLUG
+	bool "Dimmable plug"
+	default y
+
+config BRIDGE_TYPE_THERMOSTAT
+	bool "Thermostat"
+	default y
+
+config BRIDGE_TYPE_FAN
+	bool "Fan"
+	default y
+
+config BRIDGE_TYPE_AIR_PURIFIER
+	bool "Air purifier"
+	default y
+
+config BRIDGE_TYPE_AIR_QUALITY
+	bool "Air quality sensor"
+	default y
+
+config BRIDGE_TYPE_SMOKE_CO
+	bool "Smoke / CO alarm"
+	default y
+
+config BRIDGE_TYPE_WATER_VALVE
+	bool "Water valve"
+	default y
+
+config BRIDGE_TYPE_WATER_FREEZE
+	bool "Water freeze detector"
+	default y
+
+config BRIDGE_TYPE_RAIN
+	bool "Rain sensor"
+	default y
+
+config BRIDGE_TYPE_ONOFF_SENSOR
+	bool "On/Off sensor"
+	default y
+
+config BRIDGE_TYPE_MOUNTED_ONOFF
+	bool "Mounted On/Off control"
+	default y
+
+config BRIDGE_TYPE_MOUNTED_DIMMER
+	bool "Mounted dimmable load control"
+	default y
+
+config BRIDGE_TYPE_PUMP
+	bool "Pump"
+	default n
+
+config BRIDGE_TYPE_COOKTOP
+	bool "Cooktop"
+	default n
+
+config BRIDGE_TYPE_SPEAKER
+	bool "Speaker (on/off + volume)"
+	default n
+
+config BRIDGE_TYPE_EXTRACTOR_HOOD
+	bool "Extractor hood"
+	default n
+
+config BRIDGE_TYPE_ROOM_AC
+	bool "Room air conditioner"
+	default y
+
+config BRIDGE_TYPE_HVAC_UNIT
+	bool "Heating/cooling unit"
+	default y
+
+config BRIDGE_TYPE_HEAT_PUMP
+	bool "Heat pump"
+	default y
+
+config BRIDGE_TYPE_WATER_HEATER
+	bool "Water heater"
+	default y
+
+config BRIDGE_TYPE_SOIL
+	bool "Soil sensor (moisture)"
+	default y
+
+comment "Stub device types (announced only, no functional clusters yet)"
+
+config BRIDGE_TYPE_STUB_CONTROL
+	bool "Stub: generic switch"
+	default n
+
+config BRIDGE_TYPE_STUB_ENERGY
+	bool "Stub: energy devices (EVSE, solar, battery, meter, tariff, DEM)"
+	default n
+
+config BRIDGE_TYPE_STUB_APPLIANCE
+	bool "Stub: appliances (vacuum, fridge, washer, dryer, dishwasher, oven...)"
+	default n
+
+config BRIDGE_TYPE_STUB_MEDIA
+	bool "Stub: media devices (video players, content app)"
+	default n
+
+config BRIDGE_TYPE_STUB_CLOSURE
+	bool "Stub: closures (Matter 1.5)"
+	default n
+
+config BRIDGE_TYPE_STUB_CAMERA
+	bool "Stub: camera (Matter 1.5)"
+	default n
+
+endmenu # Bridged device types
+
+menu "XIAO nRF54L15 Sense on-board sensors"
+	depends on BOARD_XIAO_NRF54L15
+
+config BRIDGE_XIAO_IMU
+	bool "Vibration / drop detection from the on-board IMU (LSM6DSO)"
+	# Ported switched off: the IMU is a later step of the rebuild, and pulling
+	# the sensor driver in now would test two things at once.
+	default n
+	select SENSOR
+	select I2C
+	select LSM6DSL
+	help
+	  Samples the on-board 6-axis IMU and exposes the result as a bridged
+	  occupancy (motion) endpoint. The accelerometer is used rather than the
+	  microphone: it detects both shaking and an actual drop (free fall
+	  followed by an impact), and it cannot be fooled by ambient noise.
+
+if BRIDGE_XIAO_IMU
+
+config BRIDGE_XIAO_IMU_AUTO_ENDPOINT
+	bool "Create the vibration endpoint automatically on first boot"
+	default y
+
+config BRIDGE_XIAO_IMU_STACK_SIZE
+	int "Stack size of the IMU sampling thread"
+	default 2048
+	help
+	  The sampling loop takes the Matter stack lock and performs I2C
+	  transfers, so it needs its own stack rather than the shared system
+	  workqueue.
+
+config BRIDGE_XIAO_IMU_PERIOD_MS
+	int "Sampling period in milliseconds"
+	default 50
+
+config BRIDGE_XIAO_IMU_VIBRATION_MG
+	int "Vibration threshold (milli-g deviation from 1 g at rest)"
+	default 350
+
+config BRIDGE_XIAO_IMU_FREEFALL_MG
+	int "Free-fall threshold (milli-g, total acceleration)"
+	default 300
+
+config BRIDGE_XIAO_IMU_IMPACT_MG
+	int "Impact threshold after free fall (milli-g)"
+	default 2000
+
+config BRIDGE_XIAO_IMU_HOLD_S
+	int "How long the endpoint stays 'detected' after a trigger (seconds)"
+	default 5
+
+endif # BRIDGE_XIAO_IMU
+
+config BRIDGE_XIAO_MIC
+	bool "Build the on-board PDM microphone driver"
+	default n
+	select AUDIO
+	select AUDIO_DMIC
+	help
+	  Build-time switch that pulls in the PDM microphone driver for the Sense
+	  board. Nothing in the bridge consumes audio yet - vibration detection
+	  uses the IMU - so this only adds the driver to the image.
+
+endmenu # XIAO sensors
+
+menu "Shell access"
+
+config BRIDGE_AUX_SHELL
+	bool "Serve a second shell on the other UART"
+	depends on SHELL
+	default n
+	help
+	  Zephyr binds its UART shell to `chosen { zephyr,shell-uart }` and only
+	  ever creates one instance, so the two board overlays are an either/or
+	  switch: commands arrive over USB or over the header pins, never both.
+
+	  Enable this to bring up a second, independent shell on the UART named
+	  by `chosen { bridge,cmd-uart }` - the overlays point it at whichever
+	  port the main shell did not take. Both instances share the same command
+	  set and keep their own line buffer and history, so the ESP companion on
+	  the pins and a human on the USB console do not step on each other.
+
+	  Costs roughly 3 KB of RAM (a shell thread plus its buffers).
+
+if BRIDGE_AUX_SHELL
+
+config BRIDGE_AUX_SHELL_PROMPT
+	string "Prompt for the second shell"
+	default "aux:~$ "
+	help
+	  Deliberately different from the main shell's "uart:~$ " so it is
+	  obvious which port you are typing on.
+
+config BRIDGE_AUX_SHELL_INIT_PRIORITY
+	int "Init priority for the second shell"
+	default 91
+	range 0 99
+	help
+	  Must be higher than both the UART driver's priority and
+	  SHELL_BACKEND_SERIAL_INIT_PRIORITY (which defaults to
+	  APPLICATION_INIT_PRIORITY, 90), so the built-in shell finishes
+	  claiming its port first.
+
+endif # BRIDGE_AUX_SHELL
+
+endmenu # Shell access
+
+endmenu # Matter bridge options
+
+source "$(ZEPHYR_CONNECTEDHOMEIP_MODULE_DIR)/config/nrfconnect/chip-module/Kconfig.features"
+source "$(ZEPHYR_CONNECTEDHOMEIP_MODULE_DIR)/config/nrfconnect/chip-module/Kconfig.defaults"
+source "$(ZEPHYR_NRF_MODULE_DIR)/samples/matter/common/src/Kconfig"
+source "Kconfig.zephyr"

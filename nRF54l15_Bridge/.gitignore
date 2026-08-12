@@ -1,0 +1,10 @@
+# editors
+*.swp
+*~
+
+# build
+/build*/
+
+# build output
+build*/
+.DS_Store

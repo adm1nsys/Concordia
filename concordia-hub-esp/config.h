@@ -57,8 +57,8 @@ static const int PIN_STATUS_LED = LED_BUILTIN;
  * portal first. Anything saved later takes precedence. Left empty, a blank
  * device starts in the captive portal instead.
  */
-#define WIFI_DEFAULT_SSID ""
-#define WIFI_DEFAULT_PASS ""
+#define WIFI_DEFAULT_SSID ""  // e.g. "your-wifi"
+#define WIFI_DEFAULT_PASS ""  // e.g. "your-password"
 
 /* Must match CONFIG_BRIDGE_MAX_ENDPOINTS on the nRF. Anything smaller and the
  * extra endpoints exist on the board but never appear in the panel. */

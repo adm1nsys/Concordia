@@ -95,7 +95,7 @@
 
   const status = {
     fw: "1.0.0", brand: "Concordia", portal: false, ip: "192.168.178.98",
-    ssid: "your-wifi", apSsid: "Concordia 192.168.4.1", rssi: -71,
+    ssid: "Home-WiFi", apSsid: "Concordia 192.168.4.1", rssi: -71,
     lang: "en", bridge: true, used: () => devices.length, total: 50,
     heap: 297032, uptime: () => Math.floor((Date.now() - started) / 1000),
     users: MOCK_USERS,
@@ -181,7 +181,7 @@
         return "HTTP 200\ncurrent.temperature_2m = 21.400\n\nAvailable fields:\n" +
                "latitude = 52.520\ncurrent.temperature_2m = 21.400\ncurrent.is_day = 1.000";
       case "wifi":
-        return "Saved networks:\n  0  your-wifi";
+        return "Saved networks:\n  0  Home-WiFi";
       case "log":
         return logLines.join("\n");
       case "help":

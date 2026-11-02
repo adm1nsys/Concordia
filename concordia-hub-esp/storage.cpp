@@ -37,6 +37,7 @@ uint8_t wifiStored = 0;
 uint8_t bindingsStored = 0;
 
 void seedDefaultWifi() {
+  if (!WIFI_DEFAULT_SSID[0]) return;  // no default network: the portal handles it
   prefs.putString(slotKey("w", 0).c_str(),
                   String(WIFI_DEFAULT_SSID) + kSep + String(WIFI_DEFAULT_PASS));
   prefs.putUChar("wcount", 1);

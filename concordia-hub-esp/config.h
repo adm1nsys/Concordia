@@ -54,10 +54,11 @@ static const int PIN_STATUS_LED = LED_BUILTIN;
 /* ----------------------------------------------------------------- network
  * The defaults are used on a blank device (first flash, or after a factory
  * reset) so the bridge joins the house network without anyone opening the
- * portal first. Anything saved later takes precedence.
+ * portal first. Anything saved later takes precedence. Left empty, a blank
+ * device starts in the captive portal instead.
  */
-#define WIFI_DEFAULT_SSID "your-wifi"
-#define WIFI_DEFAULT_PASS "your-password"
+#define WIFI_DEFAULT_SSID ""
+#define WIFI_DEFAULT_PASS ""
 
 /* Must match CONFIG_BRIDGE_MAX_ENDPOINTS on the nRF. Anything smaller and the
  * extra endpoints exist on the board but never appear in the panel. */

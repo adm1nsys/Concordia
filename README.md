@@ -1,109 +1,101 @@
-# Concordia
+<picture>
+  <source media="(prefers-color-scheme: light)" srcset=".github/readme/banner-light.svg">
+  <img src=".github/readme/banner-dark.svg" alt="Concordia — Anything with a UART into Matter over Thread" width="100%">
+</picture>
 
-**A Matter over Thread bridge built entirely on microcontrollers — no Linux,
-no Raspberry Pi, no always-on hub computer.**
+<p>
+  <a href="https://adm1nsys.github.io/Concordia/"><img src="https://img.shields.io/badge/Website-070707?style=for-the-badge&logo=safari&logoColor=white" alt="Website"></a>
+  <a href="https://adm1nsys.github.io/Concordia/#versions"><img src="https://img.shields.io/badge/All_versions-070707?style=for-the-badge&logo=github&logoColor=white" alt="All versions"></a>
+  <a href="#license"><img src="https://img.shields.io/badge/License-MIT_·_Nordic_5--Clause-070707?style=for-the-badge&labelColor=070707&color=434343" alt="License: MIT and Nordic 5-Clause"></a>
+</p>
 
-Concordia turns whatever you can reach over an HTTP API — a weather service,
-a cheap Wi-Fi sensor, a piece of gear with nothing but a REST endpoint — into
-real Matter accessories on your Thread network, commissionable straight into
-Apple Home, Google Home, Amazon Alexa, or anything else that speaks Matter.
-No Home Assistant, no Homebridge, no server running 24/7 in a closet. Two
-small boards, a few dollars of hardware, running off USB power.
+**A bridge from anything into Matter over Thread, built on a single
+microcontroller — no Linux, no Raspberry Pi, no hub computer.**
 
-## How it actually works
+An nRF54L15 runs the Matter/Thread stack and hosts a table of virtual
+accessories — temperature, humidity, lights, plugs, locks, thermostats and
+over 30 more types. Whatever can write a line of text to a serial port can
+create them and feed them values: another microcontroller, a computer, a
+script, or a person typing into a terminal. Apple Home, Google Home, Amazon
+Alexa and any other Matter controller see real accessories on the Thread
+network.
 
-Most Matter bridges are software running on a computer, with a USB Thread
-radio plugged into it. Concordia inverts that: the Thread radio **is** the
-bridge, and a second microcontroller sits in front of it doing everything
-that computer would otherwise be doing.
+## How it works
 
 ```
-                     Wi-Fi                    UART                  Thread / 802.15.4
- HTTP APIs  <------------------->  ESP32-C6  <-------->  nRF54L15  <-------------------->  Apple Home
- (any URL,                        "commander"            "hub"                             Google Home
-  JSON path                                                                                 Alexa, etc.
-  + scale)                        Wi-Fi + web            Matter accessory
-                                  admin panel             server, commissioned
-                                  (served from            directly by the
-                                  an SD card)              ecosystem over Thread
+ any data source                 UART / USB serial                 Thread / 802.15.4
+ ───────────────                 line-based shell                  ─────────────────
+ ESP32 polling HTTP APIs   ─┐                         ┌──────────┐                     Apple Home
+ another microcontroller   ─┼──  bridge set 4 2137  ──│ nRF54L15 │ <─────────────────> Google Home
+ a script on a computer    ─┤                         │  bridge  │                     Alexa, …
+ you, in a terminal        ─┘                         └──────────┘
 ```
 
-- **The nRF54L15 is the actual Matter hub.** It runs the full Matter/Thread
-  stack (nRF Connect SDK, built on Zephyr) and is the thing your phone
-  commissions — it advertises, pairs, and answers Matter traffic over Thread
-  on its own, exactly like a commercial Matter accessory would. It hosts a
-  configurable table of virtual endpoints (temperature, humidity, switches,
-  contact sensors, lights, locks, thermostats, air quality, and more — over
-  30 device types out of the box) that don't correspond to any of its own
-  physical hardware.
-- **The ESP32 is the commander.** It owns Wi-Fi, serves a full admin web
-  panel with no computer or app needed to configure anything, manages users
-  and permissions, and — the actual bridging work — polls arbitrary HTTP
-  APIs and writes the results into the nRF's virtual endpoints over a simple
-  UART link. Add a device in the panel, point it at a URL and a JSON path,
-  and it shows up in Apple Home.
-- **The link between them is a plain line-based shell protocol** (`bridge
-  add temp "Outside"`, `bridge set 4 2137`, and so on) — the same commands
-  work whether they arrive over UART from the ESP32 or typed by hand into
-  the node's USB console. One implementation of every operation, nothing to
-  drift out of sync between "what the panel does" and "what a human on a
-  cable can do."
+- **The nRF54L15 is the bridge.** It runs the full Matter/Thread stack (nRF
+  Connect SDK on Zephyr) and is the thing your phone commissions — it
+  advertises, pairs and answers Matter traffic on its own, exactly like a
+  commercial accessory. Its endpoints are virtual: they are not tied to any
+  hardware on the board, and they stay across reboots.
+- **The input is a plain line protocol** on the board's serial shell. The
+  same commands work from a program and from a human on a cable; there is no
+  binary format or SDK to link against.
+- **Where the data comes from is up to you.** This repository ships one
+  complete source: an ESP32-C6 with Wi-Fi and a web panel that pulls values
+  from HTTP APIs. It was simply the board at hand — anything with a 3.3 V
+  UART, or a computer on the USB port, does the same job.
 
-The result is a genuine two-chip Matter bridge: no board in the chain runs
-an operating system heavier than an RTOS, nothing needs to stay running on a
-laptop, and the whole thing draws the power of two microcontrollers, not a
-single-board computer.
+## Feeding it data
 
-## Why this matters
+115200 baud, one command per line, prompt `uart:~$`. A bare `bridge` prints
+the menu.
 
-Every existing "bridge anything into Matter" story assumes a computer:
-Home Assistant, Homebridge, a Docker container, something with a package
-manager and a filesystem to keep patched. That's a fine answer if you
-already have one running. Concordia is the answer for when you don't want
-one running just for this — a shelf, a wall socket, a battery bank. It boots
-in seconds, has no update surface beyond its own firmware, and if it's
-unplugged for a week nothing needs recovering.
+| Command | |
+| --- | --- |
+| `bridge types` | endpoint types that can be added, with the value format of each |
+| `bridge add <type> <name>` | create an endpoint, e.g. `bridge add temp "Outside"` |
+| `bridge set <id> <value> [level] [mireds]` | update it, e.g. `bridge set 4 2137` → 21.37 °C |
+| `bridge list` | all endpoints with their current values |
+| `bridge remove <id>` | delete one |
+| `bridge status`, `bridge pairing` | runtime state; the manual code and QR payload |
+| `bridge commission` | open the commissioning window (BLE advertising) |
+| `bridge reboot`, `bridge factoryreset confirm` | restart; erase fabrics and endpoints |
 
-## Compatibility
+Values are integers in the unit the Matter cluster uses (centi-degrees for
+temperature, `1`/`0` for on/off, `0-254` for a level); `bridge types` shows
+the format and an example for every type. Changes made in a controller —
+switching a light in Apple Home — are written back to the endpoint, so the
+data source can read them with `bridge list`.
 
-Built and verified on one specific pair of boards; designed so most of that
-is a config choice, not a source-code rewrite, when a candidate board offers
-the same underlying pieces (see the roadmap's "support for other boards" for
-what that would actually take).
+## Boards
 
-| Role | Board | Status | Why |
-| --- | --- | --- | --- |
-| Commander (Wi-Fi, web panel, orchestration) | **Seeed XIAO ESP32-C6** | ✅ Shipped, this repo | What `concordia-hub-esp/config.h` is written for — Wi-Fi 6, enough flash/RAM for the panel and SD stack, the `D0`..`D10` pin aliases the firmware relies on |
-| Commander, likely portable | Other Seeed XIAO ESP32 boards (S3, C3) | 🧪 Untested | Same castellated pinout and `D`-alias convention as the C6; would need the flash/RAM budget and pin map in `config.h` re-checked, no architecture change |
-| Bridge / Matter hub (Thread radio, accessory server) | **Seeed XIAO nRF54L15 (Sense)** | ✅ Shipped, this repo | A hand-ported board target (`nRF54l15_Bridge/boards/`, see `PORTING_NOTES.md`) — not one of Nordic's official dev kits, chosen for its price and its `XIAO` footprint |
-| Bridge, likely portable | nRF52840 DK, nRF5340 DK, nRF54L15 DK/Tag, nRF54LM20 DK | 🧪 Untested | Nordic's own Matter template already supports these boards natively — porting means writing an equivalent board `.conf`, not changing the UART protocol or the ESP32 side at all |
-| Bridge, not compatible | Anything without an 802.15.4 Thread radio | ❌ | Matter *over Thread* specifically — this project does not use Matter-over-Wi-Fi |
+| Role | Board | Status |
+| --- | --- | --- |
+| Bridge | **nRF54L15 DK** | ✅ Shell on the DK's USB serial port — a computer can drive it directly |
+| Bridge | **Seeed XIAO nRF54L15 (Sense)** | ✅ Shell on the header pins (`P2.08` TX, `P2.07` RX), logs stay on USB. Not an official Nordic target, hand-ported — see [`PORTING_NOTES.md`](nRF54l15_Bridge/PORTING_NOTES.md) |
+| Bridge, likely portable | nRF52840 DK, nRF5340 DK, nRF54L15 Tag, nRF54LM20 DK | 🧪 Supported by Nordic's Matter Template the firmware is built on; untested |
+| Data source | **Seeed XIAO ESP32-C6** with [`concordia-hub-esp`](concordia-hub-esp) | ✅ The companion in this repository |
+| Data source | anything with a 3.3 V UART, or a computer over USB | ✅ Only needs to send text lines |
 
-If you build this on hardware not in this table, the roadmap's "support for
-other boards" item is the place that work would start.
+Only Matter **over Thread** — the bridge needs an 802.15.4 radio; Matter over
+Wi-Fi is not used.
 
-## What's in the box
+## The ESP32-C6 companion
 
-- **Full admin web panel**, served straight off an SD card — no compiling
-  the interface into firmware, no size limit but the card's. Multi-user,
-  with per-user permissions (control specific devices, add/remove devices,
-  change settings), sessions, and a first-run setup wizard.
-- **Wi-Fi management** from the panel itself: saved networks, scan-and-join,
-  a captive-portal recovery mode if it ever loses the network entirely.
-- **mDNS hostname**, so the panel is reachable at a name instead of chasing
-  an IP around after a network change.
-- **Warnings and structured logging**, written to the card, surviving
-  reboots — link health, network reachability, auth failures.
-- **Generic HTTP → Matter bridging**: any URL that answers JSON, a path
-  into it, and a scale factor — no per-service integration to write. The
-  same mechanism that pulls live weather into a virtual sensor during setup
-  works for anything else with a URL.
-- **Deferred-BLE pairing**: the commissioning code and QR are fetched once,
-  early, over a clean line and kept in memory — the panel can show them
-  before the node has ever been paired, not just after.
+One ready-made data source, so the bridge is useful without writing any code:
 
-Version 1. See `concordia-hub-esp/ROADMAP.md` for exactly what's done,
-what's rough, and what's next.
+- **Generic HTTP → Matter**: any URL that answers JSON, a path into it and a
+  scale factor. Add a device in the panel, point it at a URL, and it shows up
+  in Apple Home.
+- **Admin web panel** served from an SD card — multi-user with per-user
+  permissions, sessions, a first-run setup wizard. Can be developed in a
+  browser with no hardware at all: [`concordia-web/README.md`](concordia-web/README.md).
+- **Wi-Fi management** from the panel, with a captive portal for recovery;
+  an **mDNS hostname** so the panel stays reachable after a network change.
+- **Warnings and logs** written to the card, surviving reboots.
+- **Pairing code and QR** in the panel before the bridge has ever been paired.
+
+Wiring to the XIAO nRF54L15 (both 3.3 V, common ground):
+`nRF P2.08 → ESP D3`, `nRF P2.07 ← ESP D2`, `GND — GND`.
 
 ## Pairing
 
@@ -124,23 +116,35 @@ on the node itself, independent of the ESP32 link entirely — the most
 reliable fallback there is. Don't hold it down: a long press is this same
 button's factory-reset trigger.
 
+## Build and flash
+
+- **Bridge:** nRF Connect SDK 3.4.0, `west build -b xiao_nrf54l15/nrf54l15/cpuapp --sysbuild`
+  (or the DK's board name), in [`nRF54l15_Bridge/`](nRF54l15_Bridge). On the
+  XIAO flash with `./flash_xiao.sh <builddir>`, not a plain `west flash` — it
+  works around an OpenOCD bug that drops the last RRAM word.
+- **ESP32-C6 companion:** `arduino-cli` with `esp32:esp32:XIAO_ESP32C6:PartitionScheme=huge_app`,
+  in [`concordia-hub-esp/`](concordia-hub-esp).
+- **Panel:** [`concordia-web/pack.py`](concordia-web/pack.py) packs it and
+  uploads it to the board.
+
+Status, open work and exact details: [`concordia-hub-esp/ROADMAP.md`](concordia-hub-esp/ROADMAP.md).
+
 ## Repository layout
 
 ```
-concordia-hub-esp/   ESP32-C6 "commander" firmware — Arduino/arduino-cli
-concordia-web/       the admin panel — plain HTML/JS/CSS, no build step
-nRF54l15_Bridge/      nRF54L15 "hub" firmware — nRF Connect SDK / Zephyr, Matter
+nRF54l15_Bridge/     the bridge — nRF Connect SDK / Zephyr, Matter over Thread
+concordia-hub-esp/   ESP32-C6 companion firmware — Arduino
+concordia-web/       the companion's admin panel — plain HTML/JS/CSS, no build step
 ```
 
-The node firmware is built on Nordic's own **Matter Template** sample from
-the nRF Connect SDK, not written from scratch — the bridge itself (virtual
-endpoints, the `bridge ...` shell, the whole point of this project) is this
-repo's; commissioning, the Matter/Thread stack underneath, and the board's
-button/LED handling come from the template.
+The bridge firmware is built on Nordic's **Matter Template** sample from the
+nRF Connect SDK. The bridge itself — virtual endpoints, the `bridge …` shell,
+storage — is this project's; commissioning, the Matter/Thread stack and the
+board's button and LED handling come from the template.
 
-Each part has its own notes: `concordia-web/README.md` for working on the
-panel against a mock hub with nothing but a browser,
-`nRF54l15_Bridge/PORTING_NOTES.md` for the Matter/Thread side and how the
-Matter Template got ported onto hardware Nordic doesn't officially support,
-`concordia-hub-esp/ROADMAP.md`'s "Reference" section for the exact build and
-flash commands for both boards.
+## License
+
+- `concordia-hub-esp/` and `concordia-web/`: [MIT](LICENSE).
+- `nRF54l15_Bridge/`: [Nordic 5-Clause](nRF54l15_Bridge/LICENSE), inherited
+  from the Matter Template — free to use and change, but only on Nordic
+  Semiconductor chips.

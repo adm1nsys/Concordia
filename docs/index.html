@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <title>Concordia — adm1nsys</title>
+    <meta name="description" content="A bridge from anything into Matter over Thread on a single nRF54L15: any device that can write a line to a serial port creates and feeds Matter accessories.">
+    <meta name="theme-color" content="#070707" media="(prefers-color-scheme: dark)">
+    <meta name="theme-color" content="#f9f9f9" media="(prefers-color-scheme: light)">
+    <link rel="icon" href="/adm1nsys/assets/img/favicon.svg" type="image/svg+xml">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;500&family=Roboto:wght@400;500&display=swap">
+    <link rel="stylesheet" href="/adm1nsys/assets/css/style.css">
+    <link rel="stylesheet" href="/adm1nsys/kit/project.css">
+  </head>
+  <body>
+    <div class="backdrop backdrop-short" aria-hidden="true"></div>
+
+    <main class="wrap">
+      <header class="page-head">
+        <p class="eyebrow">Matter · Thread · nRF54L15 · Zephyr</p>
+        <h1>Concordia</h1>
+        <p class="lead" data-i18n="lead"></p>
+        <div class="actions">
+          <a class="btn btn-primary" data-download="source"
+             href="https://github.com/adm1nsys/Concordia/archive/refs/heads/main.zip">
+            <span data-i18n="download"></span>
+          </a>
+          <a class="btn" href="#versions" data-i18n="allVersions"></a>
+          <a class="btn btn-ghost" href="https://github.com/adm1nsys/Concordia" target="_blank" rel="noopener">GitHub ↗</a>
+        </div>
+        <p class="meta" data-i18n="meta"></p>
+      </header>
+
+      <div class="card terminal" aria-label="Example session">
+        <div class="terminal-bar" aria-hidden="true"><i></i><i></i><i></i></div>
+<pre>uart:~$ bridge add temp Outside
+Allocated EP4 type=temp name=Outside
+Matter dynamic endpoint backend: active and persisted.
+uart:~$ bridge set 4 2137
+Updated EP4 type=temp value=2137
+Matter virtual endpoint value updated and persisted.</pre>
+      </div>
+
+      <div class="folds">
+        <details class="card fold" open>
+          <summary><span data-i18n="howTitle"></span><svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></summary>
+          <div class="fold-body">
+<pre>any data source              UART / USB serial            Thread
+ESP32 polling HTTP APIs  ─┐                    ┌──────────┐        Apple Home
+another microcontroller  ─┼─ bridge set 4 2137 │ nRF54L15 │ &lt;────&gt; Google Home
+a script on a computer   ─┤                    │  bridge  │        Alexa, …
+you, in a terminal       ─┘                    └──────────┘</pre>
+            <div data-i18n-html="howBody"></div>
+          </div>
+        </details>
+
+        <details class="card fold">
+          <summary><span data-i18n="cmdTitle"></span><svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></summary>
+          <div class="fold-body">
+            <p data-i18n-html="cmdIntro"></p>
+            <div class="table-wrap">
+              <table>
+                <tbody>
+                  <tr><td><code>bridge types</code></td><td data-i18n="cTypes"></td></tr>
+                  <tr><td><code>bridge add &lt;type&gt; &lt;name&gt;</code></td><td data-i18n="cAdd"></td></tr>
+                  <tr><td><code>bridge set &lt;id&gt; &lt;value&gt;</code></td><td data-i18n="cSet"></td></tr>
+                  <tr><td><code>bridge list</code></td><td data-i18n="cList"></td></tr>
+                  <tr><td><code>bridge remove &lt;id&gt;</code></td><td data-i18n="cRemove"></td></tr>
+                  <tr><td><code>bridge pairing</code></td><td data-i18n="cPairing"></td></tr>
+                  <tr><td><code>bridge commission</code></td><td data-i18n="cCommission"></td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p data-i18n-html="cmdNote"></p>
+          </div>
+        </details>
+
+        <details class="card fold">
+          <summary><span data-i18n="typesTitle"></span><svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></summary>
+          <div class="fold-body">
+            <p data-i18n="typesIntro"></p>
+            <p><code>temp</code> <code>humidity</code> <code>pressure</code> <code>flow</code> <code>illuminance</code> <code>airquality</code> <code>soil</code> <code>rain</code> <code>contact</code> <code>occupancy</code> <code>leak</code> <code>freeze</code> <code>smoke</code> <code>light</code> <code>dimmer</code> <code>colorlight</code> <code>rgblight</code> <code>plug</code> <code>dimplug</code> <code>blind</code> <code>lock</code> <code>valve</code> <code>thermostat</code> <code>fan</code> <code>purifier</code> <code>aircon</code> <code>hvacunit</code> <code>heatpump</code> <code>waterheater</code> <code>pump</code> <code>cooktop</code> <code>hood</code> <code>speaker</code> <code>onoffsensor</code> <code>mountedonoff</code> <code>mounteddimmer</code></p>
+          </div>
+        </details>
+
+        <details class="card fold">
+          <summary><span data-i18n="boardsTitle"></span><svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></summary>
+          <div class="fold-body">
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th data-i18n="thRole"></th><th data-i18n="thBoard"></th><th data-i18n="thNotes"></th></tr></thead>
+                <tbody>
+                  <tr><td data-i18n="rBridge"></td><td>nRF54L15 DK</td><td data-i18n="bDk"></td></tr>
+                  <tr><td data-i18n="rBridge"></td><td>Seeed XIAO nRF54L15 (Sense)</td><td data-i18n-html="bXiao"></td></tr>
+                  <tr><td data-i18n="rBridge"></td><td>nRF52840 DK, nRF5340 DK, nRF54LM20 DK</td><td data-i18n="bOther"></td></tr>
+                  <tr><td data-i18n="rSource"></td><td data-i18n="bAnything"></td><td data-i18n="bAnythingNote"></td></tr>
+                  <tr><td data-i18n="rSource"></td><td>Seeed XIAO ESP32-C6</td><td data-i18n="bEsp"></td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p data-i18n="threadOnly"></p>
+          </div>
+        </details>
+
+        <details class="card fold">
+          <summary><span data-i18n="espTitle"></span><svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></summary>
+          <div class="fold-body" data-i18n-html="espBody"></div>
+        </details>
+
+        <details class="card fold">
+          <summary><span data-i18n="pairTitle"></span><svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></summary>
+          <div class="fold-body">
+<pre>manual: 3497-011-2332
+qr:     MT:06PS042C00KA0648G00</pre>
+            <div data-i18n-html="pairBody"></div>
+          </div>
+        </details>
+
+        <details class="card fold">
+          <summary><span data-i18n="buildTitle"></span><svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></summary>
+          <div class="fold-body" data-i18n-html="buildBody"></div>
+        </details>
+
+        <details class="card fold">
+          <summary><span data-i18n="licenseTitle"></span><svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></summary>
+          <div class="fold-body" data-i18n-html="licenseBody"></div>
+        </details>
+
+        <details class="card fold" id="versions" open>
+          <summary><span data-i18n="versionsTitle"></span><svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></summary>
+          <div class="fold-body" data-releases></div>
+        </details>
+      </div>
+    </main>
+
+    <script>
+      const REPO = 'https://github.com/adm1nsys/Concordia';
+      const file = (path, label = path) => `<a href="${REPO}/blob/main/${path}" target="_blank" rel="noopener"><code>${label}</code></a>`;
+      const dir = (path) => `<a href="${REPO}/tree/main/${path}" target="_blank" rel="noopener"><code>${path}/</code></a>`;
+      window.PROJECT = {
+        repo: 'adm1nsys/Concordia',
+        license: 'MIT · Nordic 5-Clause',
+        langs: ['de', 'en'],
+        fallback: [{ label: 'Concordia (main, zip)', url: `${REPO}/archive/refs/heads/main.zip` }],
+        i18n: {
+          de: {
+            lead: 'Eine Brücke von allem nach Matter over Thread auf einem einzigen Mikrocontroller. Ein nRF54L15 stellt virtuelle Geräte bereit — Sensoren, Lampen, Steckdosen, Schlösser, Thermostate —, und alles, was eine Textzeile an eine serielle Schnittstelle schicken kann, legt sie an und liefert ihre Werte. Apple Home, Google Home und Alexa sehen echtes Matter-Zubehör.',
+            download: 'Quellcode herunterladen',
+            allVersions: 'Alle Versionen',
+            meta: 'Kein Linux, kein Raspberry Pi, kein Server · über 30 Gerätetypen',
+            howTitle: 'So funktioniert es',
+            howBody: '<ul><li><strong>Der nRF54L15 ist die Brücke.</strong> Er führt den kompletten Matter/Thread-Stack aus (nRF Connect SDK auf Zephyr) und wird vom Handy direkt in Betrieb genommen — wie ein gekauftes Matter-Gerät. Seine Geräte sind virtuell und bleiben nach einem Neustart erhalten.</li><li><strong>Die Eingabe ist ein einfaches Zeilenprotokoll</strong> auf der seriellen Shell. Dieselben Befehle funktionieren aus einem Programm und von Hand im Terminal — kein Binärformat, kein SDK.</li><li><strong>Woher die Daten kommen, ist frei.</strong> Im Repository liegt eine fertige Quelle: ein ESP32-C6 mit WLAN und Weboberfläche, der Werte aus HTTP-APIs holt. Er war einfach gerade zur Hand — jeder Mikrocontroller mit 3,3-V-UART oder ein Computer am USB-Port tut dasselbe.</li></ul>',
+            cmdTitle: 'Daten einspeisen',
+            cmdIntro: '115200 Baud, ein Befehl pro Zeile, Prompt <code>uart:~$</code>. Ein einfaches <code>bridge</code> zeigt das Menü.',
+            cTypes: 'verfügbare Gerätetypen und das Werteformat jedes Typs',
+            cAdd: 'Gerät anlegen, z. B. bridge add temp Outside',
+            cSet: 'Wert setzen, z. B. bridge set 4 2137 → 21,37 °C; Lampen zusätzlich [Helligkeit] [Farbtemperatur]',
+            cList: 'alle Geräte mit ihren aktuellen Werten',
+            cRemove: 'Gerät löschen',
+            cPairing: 'Kopplungscode und QR-Inhalt',
+            cCommission: 'Kopplungsfenster öffnen (BLE-Advertising)',
+            cmdNote: 'Werte sind ganze Zahlen in der Einheit des Matter-Clusters: Hundertstel Grad bei Temperatur, <code>1</code>/<code>0</code> für an/aus, <code>0–254</code> für Helligkeit. Was im Controller geändert wird — eine Lampe in Apple Home schalten —, landet im Gerät und ist mit <code>bridge list</code> lesbar.',
+            typesTitle: 'Gerätetypen',
+            typesIntro: 'Jeder Typ lässt sich mehrfach anlegen. Die Gesamtzahl legt CONFIG_BRIDGE_MAX_ENDPOINTS fest — 50 auf dem XIAO.',
+            boardsTitle: 'Boards',
+            thRole: 'Rolle', thBoard: 'Board', thNotes: 'Hinweise',
+            rBridge: 'Brücke', rSource: 'Datenquelle',
+            bDk: 'Shell auf dem USB-Port des DK — ein Computer kann sie direkt ansteuern',
+            bXiao: 'Shell auf den Pins <code>P2.08</code> TX / <code>P2.07</code> RX, Logs bleiben auf USB. Kein offizielles Nordic-Ziel, selbst portiert',
+            bOther: 'vom Matter-Template unterstützt, nicht getestet',
+            bAnything: 'alles mit 3,3-V-UART oder ein Computer über USB',
+            bAnythingNote: 'muss nur Textzeilen senden',
+            bEsp: 'die mitgelieferte Begleitfirmware mit Weboberfläche',
+            threadOnly: 'Nur Matter over Thread — die Brücke braucht ein 802.15.4-Funkmodul; Matter über WLAN wird nicht verwendet.',
+            espTitle: 'Der ESP32-C6 als Datenquelle',
+            espBody: `<p>Eine fertige Quelle, damit die Brücke ohne eigenen Code nützlich ist:</p><ul><li><strong>HTTP → Matter:</strong> jede URL, die JSON liefert, ein Pfad darin und ein Faktor. Gerät in der Oberfläche anlegen, URL eintragen — und es erscheint in Apple Home.</li><li><strong>Weboberfläche von der SD-Karte:</strong> mehrere Benutzer mit eigenen Rechten, Einrichtungsassistent. Lässt sich ohne Hardware im Browser entwickeln — ${file('concordia-web/README.md')}.</li><li><strong>WLAN-Verwaltung</strong> mit Captive Portal zur Wiederherstellung und einem mDNS-Namen.</li><li><strong>Warnungen und Logs</strong> auf der Karte, über Neustarts hinweg.</li></ul><p>Verkabelung zum XIAO nRF54L15 (beide 3,3 V, gemeinsame Masse): <code>nRF P2.08 → ESP D3</code>, <code>nRF P2.07 ← ESP D2</code>, <code>GND — GND</code>.</p>`,
+            pairTitle: 'Koppeln',
+            pairBody: '<p>Die Identität ist beim Bauen festgelegt, daher sind Code und QR immer dieselben.</p><p>Wenn das Gerät in Apple Home, Google Home oder Alexa nicht gefunden wird: die <strong>USR-Taste</strong> am nRF <strong>einmal kurz</strong> drücken — das öffnet das Kopplungsfenster direkt. Nicht gedrückt halten: ein langer Druck setzt auf Werkseinstellungen zurück.</p>',
+            buildTitle: 'Bauen und flashen',
+            buildBody: `<ul><li><strong>Brücke</strong> (${dir('nRF54l15_Bridge')}): nRF Connect SDK 3.4.0, <code>west build -b xiao_nrf54l15/nrf54l15/cpuapp --sysbuild</code> oder der Board-Name des DK. Den XIAO mit <code>./flash_xiao.sh &lt;builddir&gt;</code> flashen statt mit <code>west flash</code> — umgeht einen OpenOCD-Fehler, der das letzte RRAM-Wort verliert.</li><li><strong>ESP32-C6</strong> (${dir('concordia-hub-esp')}): <code>arduino-cli</code> mit <code>esp32:esp32:XIAO_ESP32C6:PartitionScheme=huge_app</code>.</li><li><strong>Weboberfläche</strong> (${dir('concordia-web')}): <code>pack.py</code> packt sie und lädt sie aufs Board.</li></ul><p>Stand und offene Punkte: ${file('concordia-hub-esp/ROADMAP.md', 'ROADMAP.md')}. Wie das Matter-Template auf den XIAO kam: ${file('nRF54l15_Bridge/PORTING_NOTES.md', 'PORTING_NOTES.md')}.</p>`,
+            licenseTitle: 'Lizenz',
+            licenseBody: `<ul><li>ESP32-Firmware und Weboberfläche: ${file('LICENSE', 'MIT')}.</li><li>Firmware der Brücke: ${file('nRF54l15_Bridge/LICENSE', 'Nordic 5-Clause')}, übernommen vom Matter-Template — frei nutzbar und änderbar, aber nur auf Chips von Nordic Semiconductor.</li></ul>`,
+            versionsTitle: 'Versionen'
+          },
+          en: {
+            lead: 'A bridge from anything into Matter over Thread on a single microcontroller. An nRF54L15 hosts virtual accessories — sensors, lights, plugs, locks, thermostats — and whatever can write a line of text to a serial port creates them and feeds their values. Apple Home, Google Home and Alexa see real Matter accessories.',
+            download: 'Download source code',
+            allVersions: 'All versions',
+            meta: 'No Linux, no Raspberry Pi, no server · over 30 device types',
+            howTitle: 'How it works',
+            howBody: '<ul><li><strong>The nRF54L15 is the bridge.</strong> It runs the full Matter/Thread stack (nRF Connect SDK on Zephyr) and is commissioned by your phone directly — like a store-bought Matter accessory. Its accessories are virtual and survive a reboot.</li><li><strong>The input is a plain line protocol</strong> on the serial shell. The same commands work from a program and by hand in a terminal — no binary format, no SDK.</li><li><strong>Where the data comes from is up to you.</strong> The repository ships one ready source: an ESP32-C6 with Wi-Fi and a web panel that pulls values from HTTP APIs. It was simply the board at hand — any microcontroller with a 3.3 V UART, or a computer on the USB port, does the same.</li></ul>',
+            cmdTitle: 'Feeding it data',
+            cmdIntro: '115200 baud, one command per line, prompt <code>uart:~$</code>. A bare <code>bridge</code> prints the menu.',
+            cTypes: 'the device types that can be added, with each one’s value format',
+            cAdd: 'create a device, e.g. bridge add temp Outside',
+            cSet: 'set a value, e.g. bridge set 4 2137 → 21.37 °C; lights also take [level] [colour temperature]',
+            cList: 'all devices with their current values',
+            cRemove: 'delete a device',
+            cPairing: 'pairing code and QR payload',
+            cCommission: 'open the commissioning window (BLE advertising)',
+            cmdNote: 'Values are integers in the Matter cluster’s unit: hundredths of a degree for temperature, <code>1</code>/<code>0</code> for on/off, <code>0–254</code> for a level. Changes made in a controller — switching a light in Apple Home — are written to the device and can be read with <code>bridge list</code>.',
+            typesTitle: 'Device types',
+            typesIntro: 'Each type can be added more than once. The total is set by CONFIG_BRIDGE_MAX_ENDPOINTS — 50 on the XIAO.',
+            boardsTitle: 'Boards',
+            thRole: 'Role', thBoard: 'Board', thNotes: 'Notes',
+            rBridge: 'Bridge', rSource: 'Data source',
+            bDk: 'shell on the DK’s USB port — a computer can drive it directly',
+            bXiao: 'shell on pins <code>P2.08</code> TX / <code>P2.07</code> RX, logs stay on USB. Not an official Nordic target, ported by hand',
+            bOther: 'supported by the Matter Template, untested',
+            bAnything: 'anything with a 3.3 V UART, or a computer over USB',
+            bAnythingNote: 'only has to send text lines',
+            bEsp: 'the companion firmware with a web panel in this repository',
+            threadOnly: 'Matter over Thread only — the bridge needs an 802.15.4 radio; Matter over Wi-Fi is not used.',
+            espTitle: 'The ESP32-C6 as a data source',
+            espBody: `<p>One ready-made source, so the bridge is useful without writing code:</p><ul><li><strong>HTTP → Matter:</strong> any URL that answers JSON, a path into it and a scale factor. Add a device in the panel, enter the URL — and it shows up in Apple Home.</li><li><strong>Web panel from the SD card:</strong> several users with their own permissions, a setup wizard. Can be developed in a browser with no hardware — ${file('concordia-web/README.md')}.</li><li><strong>Wi-Fi management</strong> with a captive portal for recovery and an mDNS name.</li><li><strong>Warnings and logs</strong> on the card, surviving reboots.</li></ul><p>Wiring to the XIAO nRF54L15 (both 3.3 V, common ground): <code>nRF P2.08 → ESP D3</code>, <code>nRF P2.07 ← ESP D2</code>, <code>GND — GND</code>.</p>`,
+            pairTitle: 'Pairing',
+            pairBody: '<p>The identity is fixed at build time, so the code and QR are always the same.</p><p>If Apple Home, Google Home or Alexa finds nothing: press the nRF’s <strong>USR button once, briefly</strong> — that opens the commissioning window directly. Don’t hold it: a long press is a factory reset.</p>',
+            buildTitle: 'Build and flash',
+            buildBody: `<ul><li><strong>Bridge</strong> (${dir('nRF54l15_Bridge')}): nRF Connect SDK 3.4.0, <code>west build -b xiao_nrf54l15/nrf54l15/cpuapp --sysbuild</code> or the DK’s board name. Flash the XIAO with <code>./flash_xiao.sh &lt;builddir&gt;</code> rather than <code>west flash</code> — it works around an OpenOCD bug that drops the last RRAM word.</li><li><strong>ESP32-C6</strong> (${dir('concordia-hub-esp')}): <code>arduino-cli</code> with <code>esp32:esp32:XIAO_ESP32C6:PartitionScheme=huge_app</code>.</li><li><strong>Web panel</strong> (${dir('concordia-web')}): <code>pack.py</code> packs it and uploads it to the board.</li></ul><p>Status and open work: ${file('concordia-hub-esp/ROADMAP.md', 'ROADMAP.md')}. How the Matter Template got onto the XIAO: ${file('nRF54l15_Bridge/PORTING_NOTES.md', 'PORTING_NOTES.md')}.</p>`,
+            licenseTitle: 'License',
+            licenseBody: `<ul><li>ESP32 firmware and web panel: ${file('LICENSE', 'MIT')}.</li><li>Bridge firmware: ${file('nRF54l15_Bridge/LICENSE', 'Nordic 5-Clause')}, inherited from the Matter Template — free to use and change, but only on Nordic Semiconductor chips.</li></ul>`,
+            versionsTitle: 'Versions'
+          }
+        }
+      };
+    </script>
+    <script src="/adm1nsys/kit/project.js"></script>
+  </body>
+</html>

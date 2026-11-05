@@ -1,0 +1,59 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - 'docs/**'
+      - '**.md'
+      - '.github/workflows/pages.yml'
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  hub:
+    name: Hub (XIAO ESP32-C6)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: arduino/setup-arduino-cli@v2
+      - name: ESP32 core
+        run: |
+          arduino-cli config init
+          arduino-cli config add board_manager.additional_urls https://espressif.github.io/arduino-esp32/package_esp32_index.json
+          arduino-cli core update-index
+          arduino-cli core install esp32:esp32
+      - name: Compile
+        run: arduino-cli compile --fqbn "esp32:esp32:XIAO_ESP32C6:PartitionScheme=huge_app" --output-dir out concordia-hub-esp
+      - uses: actions/upload-artifact@v4
+        with:
+          name: concordia-hub-xiao-esp32c6
+          path: out/concordia-hub-esp.ino.merged.bin
+
+  bridge:
+    name: Bridge (XIAO nRF54L15)
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    # Nordic's toolchain image for the SDK version the bridge is written against
+    container: ghcr.io/nrfconnect/sdk-nrf-toolchain:v3.4.0
+    defaults:
+      run:
+        shell: bash
+    env:
+      ACCEPT_JLINK_LICENSE: 1
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: concordia
+      - name: nRF Connect SDK 3.4.0
+        run: |
+          west init -m https://github.com/nrfconnect/sdk-nrf --mr v3.4.0 ncs
+          cd ncs
+          west update --narrow -o=--depth=1
+      - name: Build
+        working-directory: ncs
+        run: west build -b xiao_nrf54l15/nrf54l15/cpuapp --sysbuild -d ../build ../concordia/nRF54l15_Bridge
+      - uses: actions/upload-artifact@v4
+        with:
+          name: concordia-bridge-xiao-nrf54l15
+          path: build/merged.hex
